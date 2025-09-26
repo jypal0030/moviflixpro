@@ -1,6 +1,8 @@
 import { db } from '@/lib/db';
+import { MemoryStorage } from '@/lib/storage';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     console.log('Content API called');
     
@@ -15,73 +17,51 @@ export async function GET(request: Request) {
       return Response.json({ error: 'Invalid type parameter' }, { status: 400 });
     }
     
-    // Try to get from database
-    const whereClause: any = { contentType: type };
-    if (categoryId) {
-      whereClause.categoryId = categoryId;
+    let allContent: any[] = [];
+    
+    // Try to get from database first
+    try {
+      const whereClause: any = { contentType: type };
+      if (categoryId) {
+        whereClause.categoryId = categoryId;
+      }
+      
+      const dbContent = await db.content.findMany({
+        where: whereClause,
+        include: {
+          category: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+      
+      allContent = dbContent;
+      console.log('Database content found:', dbContent.length);
+    } catch (dbError) {
+      console.log('Database error, using fallback data:', dbError);
     }
     
-    const content = await db.content.findMany({
-      where: whereClause,
-      include: {
-        category: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    // Get content from memory storage
+    const storage = MemoryStorage.getInstance();
+    const memoryContent = storage.getContent(type, categoryId);
+    console.log('Memory content found:', memoryContent.length);
     
-    console.log('Content found:', content.length);
-    return Response.json(content);
+    // Combine database and memory content
+    const combinedContent = [...memoryContent, ...allContent];
+    
+    // Remove duplicates (based on title)
+    const uniqueContent = combinedContent.filter((item, index, self) => 
+      index === self.findIndex((t) => t.title === item.title)
+    );
+    
+    console.log('Total unique content returned:', uniqueContent.length);
+    return Response.json(uniqueContent);
     
   } catch (error) {
     console.error('Content API Error:', error);
     
-    // Fallback data if database fails
-    const fallbackContent = [
-      {
-        id: 'movie1',
-        title: 'Sample Action Movie',
-        description: 'An exciting action movie',
-        posterUrl: 'https://via.placeholder.com/300x450',
-        year: 2024,
-        duration: '120 min',
-        rating: 8.5,
-        quality: 'HD',
-        telegramUrl: '#',
-        contentType: 'MOVIE',
-        categoryId: 'action',
-        category: {
-          id: 'action',
-          name: 'Action',
-          slug: 'action'
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: 'movie2',
-        title: 'Sample Comedy Movie',
-        description: 'A hilarious comedy movie',
-        posterUrl: 'https://via.placeholder.com/300x450',
-        year: 2024,
-        duration: '90 min',
-        rating: 7.8,
-        quality: 'HD',
-        telegramUrl: '#',
-        contentType: 'MOVIE',
-        categoryId: 'comedy',
-        category: {
-          id: 'comedy',
-          name: 'Comedy',
-          slug: 'comedy'
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    ];
-    
-    console.log('Using fallback content');
-    return Response.json(fallbackContent);
+    // Ultimate fallback
+    return Response.json([]);
   }
 }

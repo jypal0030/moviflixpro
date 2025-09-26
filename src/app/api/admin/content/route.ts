@@ -1,3 +1,5 @@
+import { db } from '@/lib/db';
+import { MemoryStorage } from '@/lib/storage';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -16,32 +18,57 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create content object
-    const content = {
-      id: Date.now().toString(),
-      title: body.title,
-      description: body.description,
-      posterUrl: body.posterUrl || 'https://via.placeholder.com/300x450',
-      year: body.year || new Date().getFullYear(),
-      duration: body.duration || '120 min',
-      rating: body.rating || '8.0',
-      quality: body.quality || 'HD',
-      telegramUrl: body.telegramUrl || '#',
-      contentType: body.contentType,
-      categoryId: body.categoryId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    // Try to save to database first
+    try {
+      const content = await db.content.create({
+        data: {
+          title: body.title,
+          description: body.description,
+          posterUrl: body.posterUrl || 'https://via.placeholder.com/300x450',
+          year: parseInt(body.year) || new Date().getFullYear(),
+          duration: body.duration || '120 min',
+          rating: parseFloat(body.rating) || 8.0,
+          quality: body.quality || 'HD',
+          telegramUrl: body.telegramUrl || '#',
+          contentType: body.contentType,
+          categoryId: body.categoryId,
+        },
+        include: {
+          category: true
+        }
+      });
 
-    console.log('Created content:', content);
+      console.log('Created content in database:', content);
 
-    // For now, we'll just return success
-    // In a real app, you'd save to database
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Content saved successfully',
-      content 
-    });
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Content saved successfully to database',
+        content 
+      });
+    } catch (dbError) {
+      console.log('Database save failed, using memory storage:', dbError);
+      
+      // Fallback to memory storage
+      const storage = MemoryStorage.getInstance();
+      const content = storage.addContent({
+        title: body.title,
+        description: body.description,
+        posterUrl: body.posterUrl || 'https://via.placeholder.com/300x450',
+        year: parseInt(body.year) || new Date().getFullYear(),
+        duration: body.duration || '120 min',
+        rating: parseFloat(body.rating) || 8.0,
+        quality: body.quality || 'HD',
+        telegramUrl: body.telegramUrl || '#',
+        contentType: body.contentType,
+        categoryId: body.categoryId,
+      });
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Content saved successfully to memory storage',
+        content 
+      });
+    }
 
   } catch (error) {
     console.error('Admin content save error:', error);
