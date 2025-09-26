@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - MoviFlixPro</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="index.html">
+                <div class="logo-icon">
+                    <i class="fas fa-play"></i>
+                </div>
+                <span class="ms-2">MoviFlixPro</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="admin.html">
+                            <i class="fas fa-user-shield me-1"></i> Admin
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="downloads.html">
+                            <i class="fas fa-download me-1"></i> Downloads
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-home me-1"></i> Home
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Admin Header -->
+            <div class="admin-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h1 class="admin-title">
+                            <i class="fas fa-user-shield me-3"></i>
+                            Admin Panel
+                        </h1>
+                        <p class="admin-subtitle">Manage your MoviFlixPro content</p>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <div class="admin-stats">
+                            <div class="stat-item">
+                                <div class="stat-number">12</div>
+                                <div class="stat-label">Movies</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">6</div>
+                                <div class="stat-label">Web Series</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">5</div>
+                                <div class="stat-label">Categories</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Tabs -->
+            <ul class="nav nav-pills admin-tabs mb-4" id="adminTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="movies-tab" data-bs-toggle="tab" 
+                            data-bs-target="#admin-movies" type="button">
+                        <i class="fas fa-film me-2"></i>Movies
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="webseries-tab" data-bs-toggle="tab" 
+                            data-bs-target="#admin-webseries" type="button">
+                        <i class="fas fa-tv me-2"></i>Web Series
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="categories-tab" data-bs-toggle="tab" 
+                            data-bs-target="#admin-categories" type="button">
+                        <i class="fas fa-tags me-2"></i>Categories
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" 
+                            data-bs-target="#admin-settings" type="button">
+                        <i class="fas fa-cog me-2"></i>Settings
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="adminTabContent">
+                <!-- Movies Tab -->
+                <div class="tab-pane fade show active" id="admin-movies" role="tabpanel">
+                    <div class="admin-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-film me-2"></i>Movies Management</h3>
+                            <button class="btn btn-primary" onclick="showAddMovieModal()">
+                                <i class="fas fa-plus me-2"></i>Add Movie
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Title</th>
+                                        <th>Year</th>
+                                        <th>Duration</th>
+                                        <th>Rating</th>
+                                        <th>Quality</th>
+                                        <th>Category</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="moviesTableBody">
+                                    <!-- Movies will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Web Series Tab -->
+                <div class="tab-pane fade" id="admin-webseries" role="tabpanel">
+                    <div class="admin-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-tv me-2"></i>Web Series Management</h3>
+                            <button class="btn btn-primary" onclick="showAddWebSeriesModal()">
+                                <i class="fas fa-plus me-2"></i>Add Web Series
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Title</th>
+                                        <th>Year</th>
+                                        <th>Duration</th>
+                                        <th>Rating</th>
+                                        <th>Quality</th>
+                                        <th>Category</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="webSeriesTableBody">
+                                    <!-- Web series will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Categories Tab -->
+                <div class="tab-pane fade" id="admin-categories" role="tabpanel">
+                    <div class="admin-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-tags me-2"></i>Categories Management</h3>
+                            <button class="btn btn-primary" onclick="showAddCategoryModal()">
+                                <i class="fas fa-plus me-2"></i>Add Category
+                            </button>
+                        </div>
+                        
+                        <div class="row" id="categoriesContainer">
+                            <!-- Categories will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="admin-settings" role="tabpanel">
+                    <div class="admin-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-cog me-2"></i>Settings</h3>
+                        </div>
+                        
+                        <div class="settings-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="siteTitle" class="form-label">Site Title</label>
+                                        <input type="text" class="form-control" id="siteTitle" value="MoviFlixPro">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="siteUrl" class="form-label">Site URL</label>
+                                        <input type="url" class="form-control" id="siteUrl" value="https://moviflixpro.com">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="adminEmail" class="form-label">Admin Email</label>
+                                        <input type="email" class="form-control" id="adminEmail" value="admin@moviflixpro.com">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="itemsPerPage" class="form-label">Items Per Page</label>
+                                        <select class="form-select" id="itemsPerPage">
+                                            <option value="10">10</option>
+                                            <option value="20" selected>20</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="siteDescription" class="form-label">Site Description</label>
+                                <textarea class="form-control" id="siteDescription" rows="3">Your ultimate destination for movies and web series. Stream the latest content in high quality with an extensive library of entertainment.</textarea>
+                            </div>
+                            
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="maintenanceMode">
+                                <label class="form-check-label" for="maintenanceMode">
+                                    Maintenance Mode
+                                </label>
+                            </div>
+                            
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="enableComments" checked>
+                                <label class="form-check-label" for="enableComments">
+                                    Enable Comments
+                                </label>
+                            </div>
+                            
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="enableRatings" checked>
+                                <label class="form-check-label" for="enableRatings">
+                                    Enable Ratings
+                                </label>
+                            </div>
+                            
+                            <button class="btn btn-success mt-3" onclick="saveSettings()">
+                                <i class="fas fa-save me-2"></i>Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="footer-brand">
+                        <div class="logo-icon">
+                            <i class="fas fa-play"></i>
+                        </div>
+                        <span>MoviFlixPro</span>
+                    </div>
+                    <p class="footer-description">
+                        Your ultimate destination for movies and web series. Stream the latest content in high quality with an extensive library of entertainment.
+                    </p>
+                    <div class="social-links">
+                        <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <h5>Quick Links</h5>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="#movies">Movies</a></li>
+                        <li><a href="#webseries">Web Series</a></li>
+                        <li><a href="#">Categories</a></li>
+                        <li><a href="#">New Releases</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Support</h5>
+                    <ul class="footer-links">
+                        <li><a href="#">Help Center</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">FAQ</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="footer-divider">
+            <div class="footer-bottom">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>&copy; 2024 MoviFlixPro. All rights reserved.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="footer-bottom-links">
+                            <a href="#">Privacy Policy</a>
+                            <a href="#">Terms of Service</a>
+                            <a href="#">Cookie Policy</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Custom JavaScript -->
+    <script src="js/admin.js"></script>
+</body>
+</html>
