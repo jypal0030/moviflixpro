@@ -1,5 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+\import { NextRequest, NextResponse } from 'next/server';
+
+// Mock content data
+let mockContent = [
+  {
+    id: "1",
+    title: "Sample Movie",
+    description: "This is a sample movie for testing",
+    posterUrl: "https://via.placeholder.com/300x450",
+    year: 2024,
+    duration: "2h 30m",
+    rating: 8.5,
+    quality: "HD",
+    telegramUrl: "https://t.me/sample",
+    contentType: "MOVIE",
+    categoryId: "1",
+    createdAt: new Date().toISOString()
+  }
+];
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,34 +25,34 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get('category');
     const search = searchParams.get('search');
 
-    let where: any = {};
+    let filteredContent = mockContent;
     
     if (contentType) {
-      where.contentType = contentType;
+      filteredContent = filteredContent.filter(item => item.contentType === contentType);
     }
     
     if (categoryId) {
-      where.categoryId = categoryId;
+      filteredContent = filteredContent.filter(item => item.categoryId === categoryId);
     }
     
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
+      filteredContent = filteredContent.filter(item => 
+        item.title.toLowerCase().includes(search.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(search.toLowerCase()))
+      );
     }
 
-    const contents = await db.content.findMany({
-      where,
-      include: {
-        category: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    // Add category info
+    const contentWithCategory = filteredContent.map(item => ({
+      ...item,
+      category: {
+        id: item.categoryId,
+        name: getCategoryName(item.categoryId),
+        slug: getCategorySlug(item.categoryId)
+      }
+    }));
 
-    return NextResponse.json(contents);
+    return NextResponse.json(contentWithCategory);
   } catch (error) {
     console.error('Error fetching contents:', error);
     return NextResponse.json(
@@ -83,26 +100,36 @@ export async function POST(request: NextRequest) {
       categoryId,
     });
 
-    const content = await db.content.create({
-      data: {
-        title,
-        description,
-        posterUrl,
-        year: year ? parseInt(year) : null,
-        duration,
-        rating: rating ? parseFloat(rating) : null,
-        quality,
-        telegramUrl,
-        contentType,
-        categoryId,
-      },
-      include: {
-        category: true,
-      },
-    });
+    const newContent = {
+      id: Date.now().toString(),
+      title,
+      description: description || '',
+      posterUrl: posterUrl || '',
+      year: year ? parseInt(year) : undefined,
+      duration: duration || '',
+      rating: rating ? parseFloat(rating) : undefined,
+      quality: quality || '',
+      telegramUrl: telegramUrl || '',
+      contentType,
+      categoryId: categoryId || '',
+      createdAt: new Date().toISOString()
+    };
 
-    console.log('Content created successfully:', content);
-    return NextResponse.json(content, { status: 201 });
+    mockContent.push(newContent);
+
+    console.log('Content created successfully:', newContent);
+    
+    // Add category info for response
+    const contentWithCategory = {
+      ...newContent,
+      category: categoryId ? {
+        id: categoryId,
+        name: getCategoryName(categoryId),
+        slug: getCategorySlug(categoryId)
+      } : null
+    };
+    
+    return NextResponse.json(contentWithCategory, { status: 201 });
   } catch (error) {
     console.error('Error creating content:', error);
     return NextResponse.json(
@@ -110,4 +137,37 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Helper functions
+function getCategoryName(categoryId: string): string {
+  const categories = {
+    "1": "Action",
+    "2": "Comedy", 
+    "3": "Drama",
+    "4": "Horror",
+    "5": "Romance",
+    "6": "Thriller",
+    "7": "Action Series",
+    "8": "Comedy Series",
+    "9": "Drama Series",
+    "10": "Documentary Series"
+  };
+  return categories[categoryId as keyof typeof categories] || "Unknown";
+}
+
+function getCategorySlug(categoryId: string): string {
+  const slugs = {
+    "1": "action",
+    "2": "comedy",
+    "3": "drama", 
+    "4": "horror",
+    "5": "romance",
+    "6": "thriller",
+    "7": "action-series",
+    "8": "comedy-series",
+    "9": "drama-series",
+    "10": "documentary-series"
+  };
+  return slugs[categoryId as keyof typeof slugs] || "unknown";
 }
