@@ -1,586 +1,1222 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { MemoryStorage } from '@/lib/storage';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { 
+  LayoutDashboard, 
+  Film, 
+  Tv, 
+  FolderOpen, 
+  Users, 
+  Settings, 
+  BarChart3, 
+  Database,
+  Upload,
+  Download,
+  Bell,
+  Search,
+  Plus, 
+  Edit, 
+  Trash2, 
+  Save,
+  X,
+  Eye,
+  Filter,
+  Calendar,
+  TrendingUp,
+  UserCheck,
+  Shield,
+  LogOut,
+  Activity,
+  FileText,
+  Image as ImageIcon,
+  Globe,
+  Zap
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 
-interface ContentItem {
+interface Content {
   id: string;
   title: string;
-  description: string;
-  posterUrl: string;
-  year: number;
-  duration: string;
-  rating: number;
-  quality: string;
-  telegramUrl: string;
+  description?: string;
+  posterUrl?: string;
+  year?: number;
+  duration?: string;
+  rating?: number;
+  quality?: 'HD' | 'FULL_HD' | 'FOUR_K' | 'EIGHT_K';
+  telegramUrl?: string;
   contentType: 'MOVIE' | 'WEB_SERIES';
-  categoryId: string;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
   createdAt: string;
-  updatedAt: string;
+  views: number;
 }
 
-export default function AdminPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState('');
-  const [contentStatus, setContentStatus] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'add' | 'manage' | 'settings'>('dashboard');
-  const [contentList, setContentList] = useState<ContentItem[]>([]);
-  const [stats, setStats] = useState({
-    totalMovies: 0,
-    totalSeries: 0,
-    totalCategories: 0,
-    recentUploads: 0
-  });
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  contentType: 'MOVIE' | 'WEB_SERIES';
+  contentCount: number;
+}
 
+interface UserActivity {
+  id: string;
+  userId: string;
+  action: string;
+  contentId?: string;
+  timestamp: string;
+  ipAddress: string;
+  userAgent: string;
+}
+
+interface SystemStats {
+  totalContent: number;
+  totalUsers: number;
+  totalViews: number;
+  todayViews: number;
+  popularContent: Content[];
+  recentActivity: UserActivity[];
+}
+
+export default function AdminPanel() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [movies, setMovies] = useState<Content[]>([]);
+  const [webSeries, setWebSeries] = useState<Content[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
+  const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingItem, setEditingItem] = useState<Content | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // Form state
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    contentType: 'MOVIE' as 'MOVIE' | 'WEB_SERIES',
-    categoryId: '',
-    posterUrl: '',
-    year: '',
-    duration: '',
-    rating: '',
-    quality: 'HD',
-    telegramUrl: ''
+    title: "",
+    description: "",
+    posterUrl: "",
+    year: "",
+    duration: "",
+    rating: "",
+    quality: "",
+    telegramUrl: "",
+    contentType: "MOVIE" as 'MOVIE' | 'WEB_SERIES',
+    categoryId: ""
   });
 
-  // Load content and stats
+  // Category form state
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: "",
+    description: "",
+    contentType: "MOVIE" as 'MOVIE' | 'WEB_SERIES'
+  });
+
+  // Settings state
+  const [settings, setSettings] = useState({
+    siteName: "MoviFlixPro",
+    siteDescription: "Your ultimate entertainment destination",
+    enableRegistration: false,
+    enableComments: false,
+    maxUploadSize: "10",
+    seoKeywords: "movies, web series, streaming, entertainment",
+    analyticsEnabled: true,
+    maintenanceMode: false
+  });
+
   useEffect(() => {
-    if (isLoggedIn) {
-      loadContent();
-      updateStats();
-    }
-  }, [isLoggedIn]);
+    checkAuth();
+    fetchData();
+    fetchSystemStats();
+  }, []);
 
-  const loadContent = () => {
-    const storage = MemoryStorage.getInstance();
-    const allContent = storage.getAllContent();
-    setContentList(allContent);
-  };
-
-  const updateStats = () => {
-    const storage = MemoryStorage.getInstance();
-    const allContent = storage.getAllContent();
-    
-    const movies = allContent.filter(item => item.contentType === 'MOVIE');
-    const series = allContent.filter(item => item.contentType === 'WEB_SERIES');
-    const categories = [...new Set(allContent.map(item => item.categoryId))];
-    const recentUploads = allContent.filter(item => {
-      const uploadDate = new Date(item.createdAt);
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return uploadDate > weekAgo;
-    });
-
-    setStats({
-      totalMovies: movies.length,
-      totalSeries: series.length,
-      totalCategories: categories.length,
-      recentUploads: recentUploads.length
-    });
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploadStatus('Uploading...');
-
+  const checkAuth = async () => {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setUploadStatus('✅ Upload successful!');
-        setFormData(prev => ({
-          ...prev,
-          posterUrl: result.url
-        }));
-      } else {
-        setUploadStatus('❌ Upload failed: ' + result.error);
+      const response = await fetch('/api/admin/check-auth');
+      if (!response.ok) {
+        window.location.href = '/admin-login';
       }
     } catch (error) {
-      setUploadStatus('❌ Upload failed: ' + error);
+      window.location.href = '/admin-login';
     }
   };
 
-  const handleContentSave = async () => {
-    if (!formData.title || !formData.description) {
-      setContentStatus('❌ Title and description are required!');
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch categories
+      const categoriesRes = await fetch('/api/categories');
+      const allCategories = await categoriesRes.json();
+      setCategories(allCategories);
+
+      // Fetch all content
+      const moviesRes = await fetch('/api/content?type=MOVIE');
+      const moviesData = await moviesRes.json();
+      setMovies(moviesData);
+
+      const webSeriesRes = await fetch('/api/content?type=WEB_SERIES');
+      const webSeriesData = await webSeriesRes.json();
+      setWebSeries(webSeriesData);
+
+      // Fetch user activities (mock data for now)
+      const mockActivities: UserActivity[] = [
+        {
+          id: "1",
+          userId: "user1",
+          action: "viewed",
+          contentId: "movie1",
+          timestamp: new Date().toISOString(),
+          ipAddress: "192.168.1.1",
+          userAgent: "Mozilla/5.0..."
+        }
+      ];
+      setUserActivities(mockActivities);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSystemStats = async () => {
+    try {
+      // Mock stats for now
+      const stats: SystemStats = {
+        totalContent: movies.length + webSeries.length,
+        totalUsers: 1250,
+        totalViews: 45670,
+        todayViews: 1234,
+        popularContent: movies.slice(0, 5),
+        recentActivity: userActivities.slice(0, 10)
+      };
+      setSystemStats(stats);
+    } catch (error) {
+      console.error('Error fetching system stats:', error);
+    }
+  };
+
+  const handleEdit = (item: Content) => {
+    setEditingItem(item);
+    setFormData({
+      title: item.title,
+      description: item.description || "",
+      posterUrl: item.posterUrl || "",
+      year: item.year?.toString() || "",
+      duration: item.duration || "",
+      rating: item.rating?.toString() || "",
+      quality: item.quality || "",
+      telegramUrl: item.telegramUrl || "",
+      contentType: item.contentType,
+      categoryId: item.category?.id || ""
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleAddNew = (contentType: 'MOVIE' | 'WEB_SERIES') => {
+    setEditingItem(null);
+    setFormData({
+      title: "",
+      description: "",
+      posterUrl: "",
+      year: "",
+      duration: "",
+      rating: "",
+      quality: "",
+      telegramUrl: "",
+      contentType,
+      categoryId: ""
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.title.trim()) {
+      alert('Title is required');
       return;
     }
 
-    setContentStatus('Saving...');
-
+    setSaving(true);
     try {
-      const response = await fetch('/api/admin/content', {
-        method: 'POST',
+      const payload = {
+        ...formData,
+        year: formData.year ? parseInt(formData.year) : undefined,
+        rating: formData.rating ? parseFloat(formData.rating) : undefined,
+        categoryId: formData.categoryId || undefined
+      };
+
+      const url = editingItem 
+        ? `/api/content/${editingItem.id}`
+        : '/api/content';
+      
+      const method = editingItem ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        setContentStatus('✅ Content saved successfully!');
-        
+      if (response.ok) {
+        await fetchData();
+        await fetchSystemStats();
+        setIsDialogOpen(false);
+        setEditingItem(null);
         // Reset form
         setFormData({
-          title: '',
-          description: '',
-          contentType: 'MOVIE',
-          categoryId: '',
-          posterUrl: '',
-          year: '',
-          duration: '',
-          rating: '',
-          quality: 'HD',
-          telegramUrl: ''
+          title: "",
+          description: "",
+          posterUrl: "",
+          year: "",
+          duration: "",
+          rating: "",
+          quality: "",
+          telegramUrl: "",
+          contentType: "MOVIE",
+          categoryId: ""
         });
-
-        // Reload content and update stats
-        setTimeout(() => {
-          loadContent();
-          updateStats();
-          setContentStatus('');
-        }, 1000);
-
       } else {
-        setContentStatus('❌ Save failed: ' + result.error);
+        const error = await response.json();
+        alert(error.error || 'Failed to save content');
       }
     } catch (error) {
-      setContentStatus('❌ Save failed: ' + error);
+      console.error('Error saving content:', error);
+      alert('Failed to save content. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const deleteContent = (id: string) => {
-    if (confirm('Are you sure you want to delete this content?')) {
-      const storage = MemoryStorage.getInstance();
-      const updatedContent = contentList.filter(item => item.id !== id);
-      // Note: This is a simple implementation. In a real app, you'd update the storage
-      setContentList(updatedContent);
-      updateStats();
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this item?')) {
+      try {
+        const response = await fetch(`/api/content/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          await fetchData();
+          await fetchSystemStats();
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Failed to delete content');
+        }
+      } catch (error) {
+        console.error('Error deleting content:', error);
+        alert('Failed to delete content. Please try again.');
+      }
     }
   };
 
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
-        <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl border border-white/20 shadow-2xl">
-          <div className="text-center mb-8">
-            <div className="text-6xl mb-4">🎬</div>
-            <h1 className="text-3xl font-bold text-white mb-2">MoviFlixPro Admin</h1>
-            <p className="text-gray-300">Premium Content Management System</p>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="bg-white/5 p-4 rounded-lg">
-              <label className="block text-white mb-2">Username</label>
-              <input
-                type="text"
-                placeholder="admin"
-                className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-              />
-            </div>
-            
-            <div className="bg-white/5 p-4 rounded-lg">
-              <label className="block text-white mb-2">Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-              />
-            </div>
-            
-            <button 
-              onClick={() => setIsLoggedIn(true)}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105"
-            >
-              🔐 Login to Dashboard
-            </button>
-          </div>
+  const handleSaveSettings = async () => {
+    setSaving(true);
+    try {
+      // Save settings to localStorage or API
+      localStorage.setItem('adminSettings', JSON.stringify(settings));
+      setIsSettingsOpen(false);
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Failed to save settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+      });
+      window.location.href = '/admin-login';
+    } catch (error) {
+      console.error('Error logging out:', error);
+      window.location.href = '/admin-login';
+    }
+  };
+
+  const filteredMovies = movies.filter(movie =>
+    movie.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredWebSeries = webSeries.filter(series =>
+    series.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const ContentTable = ({ items, type }: { items: Content[]; type: 'MOVIE' | 'WEB_SERIES' }) => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">{type === 'MOVIE' ? 'Movies' : 'Web Series'}</h2>
+        <div className="flex gap-2">
+          <Button onClick={() => handleAddNew(type)} className="bg-purple-600 hover:bg-purple-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Add {type === 'MOVIE' ? 'Movie' : 'Web Series'}
+          </Button>
+          <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-700">
+            <Upload className="w-4 h-4 mr-2" />
+            Bulk Upload
+          </Button>
         </div>
+      </div>
+      
+      <div className="bg-gray-800 rounded-lg border border-gray-700">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-gray-700">
+              <TableHead className="text-gray-300">Poster</TableHead>
+              <TableHead className="text-gray-300">Title</TableHead>
+              <TableHead className="text-gray-300">Year</TableHead>
+              <TableHead className="text-gray-300">Duration</TableHead>
+              <TableHead className="text-gray-300">Rating</TableHead>
+              <TableHead className="text-gray-300">Quality</TableHead>
+              <TableHead className="text-gray-300">Category</TableHead>
+              <TableHead className="text-gray-300">Views</TableHead>
+              <TableHead className="text-gray-300">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id} className="border-gray-700">
+                <TableCell>
+                  <img
+                    src={item.posterUrl || "/api/placeholder/60/90"}
+                    alt={item.title}
+                    className="w-12 h-16 object-cover rounded"
+                  />
+                </TableCell>
+                <TableCell className="text-white font-medium">{item.title}</TableCell>
+                <TableCell className="text-gray-300">{item.year}</TableCell>
+                <TableCell className="text-gray-300">{item.duration}</TableCell>
+                <TableCell className="text-gray-300">
+                  <div className="flex items-center gap-1">
+                    <span className="text-yellow-400">★</span>
+                    {item.rating}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge className="bg-purple-600">
+                    {item.quality === 'FOUR_K' ? '4K' : item.quality === 'FULL_HD' ? 'HD' : item.quality}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-gray-300">{item.category?.name}</TableCell>
+                <TableCell className="text-gray-300">{item.views || 0}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(item)}
+                      className="border-gray-600 text-white hover:bg-gray-700"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(item.id)}
+                      className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-gray-600 text-white hover:bg-gray-700"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading admin panel...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
-      {/* Header */}
-      <header className="bg-black/30 backdrop-blur-lg border-b border-white/10">
-        <div className="container mx-auto px-6 py-4">
+    <div className="min-h-screen bg-gray-900">
+      {/* Admin Header */}
+      <header className="bg-black border-b border-gray-800">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="text-3xl">🎬</div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">MoviFlixPro Admin</h1>
-                <p className="text-gray-400 text-sm">Content Management Dashboard</p>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Shield className="w-6 h-6 text-purple-500" />
+                <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
               </div>
+              <Badge className="bg-green-600">Online</Badge>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <div className="text-white font-semibold">Admin User</div>
-                <div className="text-gray-400 text-sm">Online</div>
-              </div>
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold">
-                A
-              </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsSettingsOpen(true)} className="border-gray-600 text-white hover:bg-gray-800">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
+              <Button variant="outline" onClick={() => window.open('/', '_blank')} className="border-gray-600 text-white hover:bg-gray-800">
+                View Site
+              </Button>
+              <Button variant="outline" onClick={handleLogout} className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Navigation */}
-      <nav className="bg-black/20 backdrop-blur-lg border-b border-white/10">
-        <div className="container mx-auto px-6">
-          <div className="flex space-x-1">
-            {[
-              { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
-              { id: 'add', label: '➕ Add Content', icon: '➕' },
-              { id: 'manage', label: '🎬 Manage Content', icon: '🎬' },
-              { id: 'settings', label: '⚙️ Settings', icon: '⚙️' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-6 py-4 font-semibold transition-all duration-300 ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </nav>
+      <div className="container mx-auto px-4 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-6 mb-8 bg-gray-800">
+            <TabsTrigger value="dashboard" className="data-[state=active]:bg-purple-600">
+              <LayoutDashboard className="w-4 h-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="movies" className="data-[state=active]:bg-purple-600">
+              <Film className="w-4 h-4 mr-2" />
+              Movies
+            </TabsTrigger>
+            <TabsTrigger value="web-series" className="data-[state=active]:bg-purple-600">
+              <Tv className="w-4 h-4 mr-2" />
+              Web Series
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="data-[state=active]:bg-purple-600">
+              <FolderOpen className="w-4 h-4 mr-2" />
+              Categories
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-purple-600">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="users" className="data-[state=active]:bg-purple-600">
+              <Users className="w-4 h-4 mr-2" />
+              Users
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
-        {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[
-              { label: 'Total Movies', value: stats.totalMovies, icon: '🎬', color: 'from-blue-600 to-cyan-600' },
-              { label: 'Web Series', value: stats.totalSeries, icon: '📺', color: 'from-green-600 to-emerald-600' },
-              { label: 'Categories', value: stats.totalCategories, icon: '🏷️', color: 'from-purple-600 to-pink-600' },
-              { label: 'Recent Uploads', value: stats.recentUploads, icon: '📈', color: 'from-orange-600 to-red-600' }
-            ].map((stat, index) => (
-              <div key={index} className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-gray-400 text-sm">{stat.label}</div>
-                    <div className="text-3xl font-bold text-white mt-2">{stat.value}</div>
-                  </div>
-                  <div className={`w-12 h-12 bg-gradient-to-r ${stat.color} rounded-full flex items-center justify-center text-2xl`}>
-                    {stat.icon}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'add' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* File Upload Section */}
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-                <span className="mr-3">📤</span> Upload Poster
-              </h2>
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                    <Film className="w-4 h-4" />
+                    Total Content
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{systemStats?.totalContent || 0}</div>
+                  <p className="text-xs text-gray-400">Movies + Series</p>
+                </CardContent>
+              </Card>
               
-              <div className="border-2 border-dashed border-white/30 rounded-lg p-8 text-center hover:border-white/50 transition-colors">
-                <div className="text-6xl mb-4">🖼️</div>
-                <p className="text-gray-300 mb-4">Drag & drop your poster here</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2 rounded-lg cursor-pointer hover:from-purple-700 hover:to-pink-700 transition-all duration-300"
-                >
-                  Choose File
-                </label>
-              </div>
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Total Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{systemStats?.totalUsers || 0}</div>
+                  <p className="text-xs text-gray-400">Registered users</p>
+                </CardContent>
+              </Card>
               
-              {uploadStatus && (
-                <div className={`mt-4 p-3 rounded-lg ${
-                  uploadStatus.includes('✅') ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'
-                }`}>
-                  {uploadStatus}
-                </div>
-              )}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    Total Views
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{systemStats?.totalViews || 0}</div>
+                  <p className="text-xs text-gray-400">All time views</p>
+                </CardContent>
+              </Card>
               
-              {formData.posterUrl && (
-                <div className="mt-6">
-                  <p className="text-gray-300 mb-2">Preview:</p>
-                  <img
-                    src={formData.posterUrl}
-                    alt="Preview"
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                </div>
-              )}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    Today's Views
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{systemStats?.todayViews || 0}</div>
+                  <p className="text-xs text-gray-400">Last 24 hours</p>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Content Form Section */}
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-                <span className="mr-3">🎬</span> Content Details
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-white mb-2">🎭 Title *</label>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
-                      className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-                      placeholder="Enter movie title..."
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white mb-2">🎭 Type</label>
-                    <select
-                      value={formData.contentType}
-                      onChange={(e) => setFormData({...formData, contentType: e.target.value as any})}
-                      className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-                    >
-                      <option value="MOVIE">🎬 Movie</option>
-                      <option value="WEB_SERIES">📺 Web Series</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white mb-2">🏷️ Category</label>
-                    <select
-                      value={formData.categoryId}
-                      onChange={(e) => setFormData({...formData, categoryId: e.target.value})}
-                      className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-                    >
-                      <option value="">Select category...</option>
-                      <option value="action">🔫 Action</option>
-                      <option value="comedy">😄 Comedy</option>
-                      <option value="drama">🎭 Drama</option>
-                      <option value="horror">👻 Horror</option>
-                      <option value="romance">💕 Romance</option>
-                      <option value="thriller">😰 Thriller</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white mb-2">📅 Year</label>
-                    <input
-                      type="number"
-                      value={formData.year}
-                      onChange={(e) => setFormData({...formData, year: e.target.value})}
-                      className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-                      placeholder="2024"
-                      min="1900"
-                      max="2030"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white mb-2">⏱️ Duration</label>
-                    <input
-                      type="text"
-                      value={formData.duration}
-                      onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                      className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-                      placeholder="120 min"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white mb-2">⭐ Rating</label>
-                    <input
-                      type="number"
-                      value={formData.rating}
-                      onChange={(e) => setFormData({...formData, rating: e.target.value})}
-                      className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-                      placeholder="8.0"
-                      min="0"
-                      max="10"
-                      step="0.1"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-white mb-2">📝 Description *</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none h-24 resize-none"
-                    placeholder="Enter content description..."
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white mb-2">🔗 Telegram URL</label>
-                  <input
-                    type="url"
-                    value={formData.telegramUrl}
-                    onChange={(e) => setFormData({...formData, telegramUrl: e.target.value})}
-                    className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-                    placeholder="https://t.me/..."
-                  />
-                </div>
-                
-                <button
-                  onClick={handleContentSave}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105"
-                >
-                  💾 Save Content
-                </button>
-                
-                {contentStatus && (
-                  <div className={`p-3 rounded-lg ${
-                    contentStatus.includes('✅') ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'
-                  }`}>
-                    {contentStatus}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'manage' && (
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-              <span className="mr-3">🎬</span> Manage Content ({contentList.length} items)
-            </h2>
-            
-            {contentList.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📭</div>
-                <p className="text-gray-400 text-lg">No content found. Add some content to get started!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {contentList.map((item) => (
-                  <div key={item.id} className="bg-white/5 rounded-lg overflow-hidden border border-white/10">
-                    <img
-                      src={item.posterUrl}
-                      alt={item.title}
-                      className="w-full h-48 object-cover"
-                    />
-                    <div className="p-4">
-                      <h3 className="font-semibold text-white mb-2 truncate">{item.title}</h3>
-                      <p className="text-gray-400 text-sm mb-2 line-clamp-2">{item.description}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{item.year} • {item.duration}</span>
-                        <span>⭐ {item.rating}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Popular Content
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {systemStats?.popularContent?.slice(0, 5).map((item) => (
+                      <div key={item.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={item.posterUrl || "/api/placeholder/40/60"}
+                            alt={item.title}
+                            className="w-8 h-12 object-cover rounded"
+                          />
+                          <span className="text-gray-300">{item.title}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500">{item.views || 0} views</span>
+                          <Badge className="bg-purple-600 text-xs">
+                            {item.quality === 'FOUR_K' ? '4K' : item.quality}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="mt-3 flex space-x-2">
-                        <button className="flex-1 bg-blue-600/20 text-blue-400 py-1 rounded text-sm hover:bg-blue-600/30">
-                          Edit
-                        </button>
-                        <button 
-                          onClick={() => deleteContent(item.id)}
-                          className="flex-1 bg-red-600/20 text-red-400 py-1 rounded text-sm hover:bg-red-600/30"
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    Recent Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {userActivities.slice(0, 5).map((activity) => (
+                      <div key={activity.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="w-4 h-4 text-green-400" />
+                          <span className="text-gray-300">
+                            User {activity.userId} {activity.action}
+                          </span>
+                        </div>
+                        <span className="text-gray-500 text-xs">
+                          {new Date(activity.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Movies Tab */}
+          <TabsContent value="movies" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold text-white">Movies Management</h2>
+                <Badge className="bg-blue-600">{filteredMovies.length} Movies</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Input
+                    placeholder="Search movies..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-gray-800 border-gray-700 text-white pl-10 w-64"
+                  />
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                </div>
+                <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-700">
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filter
+                </Button>
+              </div>
+            </div>
+            <ContentTable items={filteredMovies} type="MOVIE" />
+          </TabsContent>
+
+          {/* Web Series Tab */}
+          <TabsContent value="web-series" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold text-white">Web Series Management</h2>
+                <Badge className="bg-green-600">{filteredWebSeries.length} Series</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Input
+                    placeholder="Search series..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-gray-800 border-gray-700 text-white pl-10 w-64"
+                  />
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                </div>
+                <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-700">
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filter
+                </Button>
+              </div>
+            </div>
+            <ContentTable items={filteredWebSeries} type="WEB_SERIES" />
+          </TabsContent>
+
+          {/* Categories Tab */}
+          <TabsContent value="categories" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-white">Categories Management</h2>
+              <Button onClick={() => setIsCategoryDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Category
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categories.map((category) => (
+                <Card key={category.id} className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center justify-between">
+                      {category.name}
+                      <Badge className="bg-purple-600">
+                        {category.contentCount} items
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-300 text-sm mb-4">{category.description}</p>
+                    <div className="flex justify-between items-center">
+                      <Badge variant="outline" className="border-gray-600 text-gray-300">
+                        {category.contentType}
+                      </Badge>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditCategory(category)}
+                          className="border-gray-600 text-white hover:bg-gray-700"
                         >
-                          Delete
-                        </button>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteCategory(category.id)}
+                          className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
 
-        {activeTab === 'settings' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-                <span className="mr-3">⚙️</span> General Settings
-              </h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-white mb-2">Site Title</label>
-                  <input
-                    type="text"
-                    defaultValue="MoviFlixPro"
-                    className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none"
-                  />
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Content Performance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-300">Movie Views</span>
+                        <span className="text-white">75%</span>
+                      </div>
+                      <Progress value={75} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-300">Series Views</span>
+                        <span className="text-white">25%</span>
+                      </div>
+                      <Progress value={25} className="h-2" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Quality Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-300">4K Content</span>
+                        <span className="text-white">15%</span>
+                      </div>
+                      <Progress value={15} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-300">HD Content</span>
+                        <span className="text-white">60%</span>
+                      </div>
+                      <Progress value={60} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-300">SD Content</span>
+                        <span className="text-white">25%</span>
+                      </div>
+                      <Progress value={25} className="h-2" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Users Tab */}
+          <TabsContent value="users" className="space-y-6">
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white">User Activity Log</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-900 rounded-lg border border-gray-700">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-gray-700">
+                        <TableHead className="text-gray-300">User ID</TableHead>
+                        <TableHead className="text-gray-300">Action</TableHead>
+                        <TableHead className="text-gray-300">Content</TableHead>
+                        <TableHead className="text-gray-300">IP Address</TableHead>
+                        <TableHead className="text-gray-300">Timestamp</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {userActivities.map((activity) => (
+                        <TableRow key={activity.id} className="border-gray-700">
+                          <TableCell className="text-gray-300">{activity.userId}</TableCell>
+                          <TableCell>
+                            <Badge className="bg-blue-600">
+                              {activity.action}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-300">{activity.contentId || '-'}</TableCell>
+                          <TableCell className="text-gray-300">{activity.ipAddress}</TableCell>
+                          <TableCell className="text-gray-300">
+                            {new Date(activity.timestamp).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-                
-                <div>
-                  <label className="block text-white mb-2">Site Description</label>
-                  <textarea
-                    defaultValue="Premium Movie Streaming Platform"
-                    className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none h-20 resize-none"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white mb-2">Items per page</label>
-                  <select className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-purple-400 focus:outline-none">
-                    <option>12</option>
-                    <option>24</option>
-                    <option>48</option>
-                  </select>
-                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Content Edit/Add Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {editingItem ? 'Edit Content' : 'Add New Content'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="contentType">Content Type *</Label>
+                <Select value={formData.contentType} onValueChange={(value) => setFormData({...formData, contentType: value as 'MOVIE' | 'WEB_SERIES'})}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MOVIE">Movie</SelectItem>
+                    <SelectItem value="WEB_SERIES">Web Series</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-                <span className="mr-3">🔐</span> Security Settings
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-semibold">Enable Admin Login</div>
-                    <div className="text-gray-400 text-sm">Require authentication for admin access</div>
-                  </div>
-                  <div className="w-12 h-6 bg-green-600 rounded-full relative">
-                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-semibold">Enable Upload</div>
-                    <div className="text-gray-400 text-sm">Allow file uploads in admin panel</div>
-                  </div>
-                  <div className="w-12 h-6 bg-green-600 rounded-full relative">
-                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-                  </div>
-                </div>
-                
-                <button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300">
-                  Save Settings
-                </button>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="bg-gray-800 border-gray-700 text-white"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="year">Year</Label>
+                <Input
+                  id="year"
+                  type="number"
+                  value={formData.year}
+                  onChange={(e) => setFormData({...formData, year: e.target.value})}
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
               </div>
+              <div>
+                <Label htmlFor="duration">Duration</Label>
+                <Input
+                  id="duration"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  placeholder="2h 30m"
+                />
+              </div>
+              <div>
+                <Label htmlFor="rating">Rating</Label>
+                <Input
+                  id="rating"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={formData.rating}
+                  onChange={(e) => setFormData({...formData, rating: e.target.value})}
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="quality">Quality</Label>
+                <Select value={formData.quality} onValueChange={(value) => setFormData({...formData, quality: value})}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HD">HD</SelectItem>
+                    <SelectItem value="FULL_HD">Full HD</SelectItem>
+                    <SelectItem value="FOUR_K">4K</SelectItem>
+                    <SelectItem value="EIGHT_K">8K</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Select value={formData.categoryId} onValueChange={(value) => setFormData({...formData, categoryId: value})}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="telegramUrl">Telegram URL</Label>
+              <Input
+                id="telegramUrl"
+                value={formData.telegramUrl}
+                onChange={(e) => setFormData({...formData, telegramUrl: e.target.value})}
+                className="bg-gray-800 border-gray-700 text-white"
+                placeholder="https://t.me/yourchannel"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="posterUrl">Poster URL</Label>
+              <Input
+                id="posterUrl"
+                value={formData.posterUrl}
+                onChange={(e) => setFormData({...formData, posterUrl: e.target.value})}
+                className="bg-gray-800 border-gray-700 text-white"
+                placeholder="https://example.com/poster.jpg"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button 
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-purple-600 hover:bg-purple-700 flex-1"
+              >
+                {saving ? 'Saving...' : (editingItem ? 'Update' : 'Create')}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsDialogOpen(false)}
+                className="border-gray-600 text-white hover:bg-gray-700"
+              >
+                Cancel
+              </Button>
             </div>
           </div>
-        )}
-      </main>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">System Settings</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">General Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="siteName">Site Name</Label>
+                  <Input
+                    id="siteName"
+                    value={settings.siteName}
+                    onChange={(e) => setSettings({...settings, siteName: e.target.value})}
+                    className="bg-gray-800 border-gray-700 text-white"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="siteDescription">Site Description</Label>
+                  <Textarea
+                    id="siteDescription"
+                    value={settings.siteDescription}
+                    onChange={(e) => setSettings({...settings, siteDescription: e.target.value})}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Features</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Enable User Registration</Label>
+                    <p className="text-sm text-gray-400">Allow users to register accounts</p>
+                  </div>
+                  <Switch
+                    checked={settings.enableRegistration}
+                    onCheckedChange={(checked) => setSettings({...settings, enableRegistration: checked})}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Enable Comments</Label>
+                    <p className="text-sm text-gray-400">Allow users to comment on content</p>
+                  </div>
+                  <Switch
+                    checked={settings.enableComments}
+                    onCheckedChange={(checked) => setSettings({...settings, enableComments: checked})}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Enable Analytics</Label>
+                    <p className="text-sm text-gray-400">Track user behavior and statistics</p>
+                  </div>
+                  <Switch
+                    checked={settings.analyticsEnabled}
+                    onCheckedChange={(checked) => setSettings({...settings, analyticsEnabled: checked})}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Maintenance Mode</Label>
+                    <p className="text-sm text-gray-400">Put site in maintenance mode</p>
+                  </div>
+                  <Switch
+                    checked={settings.maintenanceMode}
+                    onCheckedChange={(checked) => setSettings({...settings, maintenanceMode: checked})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Upload Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="maxUploadSize">Max Upload Size (MB)</Label>
+                  <Input
+                    id="maxUploadSize"
+                    value={settings.maxUploadSize}
+                    onChange={(e) => setSettings({...settings, maxUploadSize: e.target.value})}
+                    className="bg-gray-800 border-gray-700 text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-4">SEO Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="seoKeywords">SEO Keywords</Label>
+                  <Textarea
+                    id="seoKeywords"
+                    value={settings.seoKeywords}
+                    onChange={(e) => setSettings({...settings, seoKeywords: e.target.value})}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="movies, web series, streaming, entertainment"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button 
+                onClick={handleSaveSettings}
+                disabled={saving}
+                className="bg-purple-600 hover:bg-purple-700 flex-1"
+              >
+                {saving ? 'Saving...' : 'Save Settings'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsSettingsOpen(false)}
+                className="border-gray-600 text-white hover:bg-gray-700"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+// Category management functions
+const handleEditCategory = (category: Category) => {
+  setEditingCategory(category);
+  setCategoryFormData({
+    name: category.name,
+    description: category.description || "",
+    contentType: category.contentType
+  });
+  setIsCategoryDialogOpen(true);
+};
+
+const handleAddCategory = () => {
+  setEditingCategory(null);
+  setCategoryFormData({
+    name: "",
+    description: "",
+    contentType: "MOVIE"
+  });
+  setIsCategoryDialogOpen(true);
+};
+
+const handleSaveCategory = async () => {
+  if (!categoryFormData.name.trim()) {
+    alert('Category name is required');
+    return;
+  }
+
+  setSaving(true);
+  try {
+    const url = editingCategory 
+      ? `/api/categories/${editingCategory.id}`
+      : '/api/categories';
+    
+    const method = editingCategory ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(categoryFormData),
+    });
+
+    if (response.ok) {
+      await fetchData();
+      setIsCategoryDialogOpen(false);
+      setEditingCategory(null);
+      // Reset form
+      setCategoryFormData({
+        name: "",
+        description: "",
+        contentType: "MOVIE"
+      });
+    } else {
+      const error = await response.json();
+      alert(error.error || 'Failed to save category');
+    }
+  } catch (error) {
+    console.error('Error saving category:', error);
+    alert('Failed to save category. Please try again.');
+  } finally {
+    setSaving(false);
+  }
+};
+
+const handleDeleteCategory = async (id: string) => {
+  if (confirm('Are you sure you want to delete this category?')) {
+    try {
+      const response = await fetch(`/api/categories/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to delete category');
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      alert('Failed to delete category. Please try again.');
+    }
+  }
+};

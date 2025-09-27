@@ -1,18 +1,18 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import type { Metadata } from "next";
 
-export default async function AdminLayout({
+export const metadata: Metadata = {
+  title: "Admin Panel - MoviFlixPro",
+  description: "Manage your MoviFlixPro content and settings",
+};
+
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const adminSession = cookieStore.get('admin_session')?.value;
-
-  // Check if admin is authenticated
-  if (!adminSession) {
-    redirect('/admin-login');
-  }
-
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-gray-900">
+      {children}
+    </div>
+  );
 }
