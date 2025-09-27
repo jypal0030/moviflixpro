@@ -1,4 +1,4 @@
-"use client";
+\"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -673,4 +673,47 @@ export default function AdminPanel() {
                   id="posterUrl"
                   value={formData.posterUrl}
                   onChange={(e) => setFormData(prev => ({ ...prev, posterUrl: e.target.value }))}
-                  className="bg-gray-700 border-gray-600 text
+                  className="bg-gray-700 border-gray-600 text-white flex-1"
+                  placeholder="https://... or upload below"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <Button
+                  type="button"
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                  disabled={uploading}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {uploading ? 'Uploading...' : <Upload className="w-4 h-4" />}
+                </Button>
+              </div>
+              {formData.posterUrl && (
+                <div className="mt-2">
+                  <img
+                    src={formData.posterUrl}
+                    alt="Poster preview"
+                    className="w-32 h-48 object-cover rounded"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-gray-600 text-white hover:bg-gray-700">
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700">
+                {saving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> Save</>}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
