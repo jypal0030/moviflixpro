@@ -14,7 +14,6 @@ import {
   Save,
   X,
   Upload,
-  Image as ImageIcon,
   LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -111,18 +110,45 @@ export default function AdminPanel() {
       setLoading(true);
       
       // Fetch categories
-      const categoriesRes = await fetch('/api/categories');
-      const allCategories = await categoriesRes.json();
-      setCategories(allCategories);
+      try {
+        const categoriesRes = await fetch('/api/categories');
+        if (categoriesRes.ok) {
+          const allCategories = await categoriesRes.json();
+          setCategories(allCategories);
+        }
+      } catch (error) {
+        console.log('Categories fetch failed, using mock data');
+        // Mock categories if API fails
+        setCategories([
+          { id: "1", name: "Action", slug: "action", contentType: "MOVIE", contentCount: 0 },
+          { id: "2", name: "Comedy", slug: "comedy", contentType: "MOVIE", contentCount: 0 },
+          { id: "3", name: "Drama", slug: "drama", contentType: "MOVIE", contentCount: 0 },
+        ]);
+      }
 
-      // Fetch all content
-      const moviesRes = await fetch('/api/content?type=MOVIE');
-      const moviesData = await moviesRes.json();
-      setMovies(moviesData);
+      // Fetch movies
+      try {
+        const moviesRes = await fetch('/api/content?type=MOVIE');
+        if (moviesRes.ok) {
+          const moviesData = await moviesRes.json();
+          setMovies(moviesData);
+        }
+      } catch (error) {
+        console.log('Movies fetch failed');
+        setMovies([]);
+      }
 
-      const webSeriesRes = await fetch('/api/content?type=WEB_SERIES');
-      const webSeriesData = await webSeriesRes.json();
-      setWebSeries(webSeriesData);
+      // Fetch web series
+      try {
+        const webSeriesRes = await fetch('/api/content?type=WEB_SERIES');
+        if (webSeriesRes.ok) {
+          const webSeriesData = await webSeriesRes.json();
+          setWebSeries(webSeriesData);
+        }
+      } catch (error) {
+        console.log('Web series fetch failed');
+        setWebSeries([]);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -165,7 +191,6 @@ export default function AdminPanel() {
   };
 
   const handleSave = async () => {
-    // Basic validation
     if (!formData.title.trim()) {
       alert('Title is required');
       return;
@@ -173,16 +198,6 @@ export default function AdminPanel() {
     
     if (!formData.contentType) {
       alert('Content type is required');
-      return;
-    }
-
-    if (formData.year && (isNaN(parseInt(formData.year)) || parseInt(formData.year) < 1900 || parseInt(formData.year) > new Date().getFullYear() + 5)) {
-      alert('Please enter a valid year');
-      return;
-    }
-
-    if (formData.rating && (isNaN(parseFloat(formData.rating)) || parseFloat(formData.rating) < 0 || parseFloat(formData.rating) > 10)) {
-      alert('Rating must be between 0 and 10');
       return;
     }
 
@@ -211,14 +226,10 @@ export default function AdminPanel() {
         body: JSON.stringify(payload),
       });
 
-      const responseData = await response.json();
-      console.log('Response:', responseData);
-
       if (response.ok) {
         await fetchData();
         setIsDialogOpen(false);
         setEditingItem(null);
-        // Reset form
         setFormData({
           title: "",
           description: "",
@@ -233,8 +244,8 @@ export default function AdminPanel() {
         });
         alert('Content saved successfully!');
       } else {
-        console.error('Server error:', responseData);
-        alert(responseData.error || 'Failed to save content');
+        const error = await response.json();
+        alert(error.error || 'Failed to save content');
       }
     } catch (error) {
       console.error('Error saving content:', error);
@@ -244,7 +255,6 @@ export default function AdminPanel() {
     }
   };
 
-  // Image upload function
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -254,32 +264,27 @@ export default function AdminPanel() {
       const formData = new FormData();
       formData.append('file', file);
 
-      console.log('Uploading image:', file.name, file.type, file.size);
-
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
-      const result = await response.json();
-      console.log('Upload response:', result);
-
       if (response.ok) {
+        const result = await response.json();
         setFormData(prev => ({
           ...prev,
           posterUrl: result.url
         }));
         alert('Image uploaded successfully!');
       } else {
-        console.error('Upload error:', result);
-        alert(result.error || 'Failed to upload image');
+        const error = await response.json();
+        alert(error.error || 'Failed to upload image');
       }
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Failed to upload image. Please try again.');
     } finally {
       setUploading(false);
-      // Reset file input
       event.target.value = '';
     }
   };
@@ -304,96 +309,6 @@ export default function AdminPanel() {
     }
   };
 
-  // Category management functions
-  const handleEditCategory = (category: Category) => {
-    setEditingCategory(category);
-    setCategoryFormData({
-      name: category.name,
-      description: category.description || "",
-      contentType: category.contentType
-    });
-    setIsCategoryDialogOpen(true);
-  };
-
-  const handleAddCategory = () => {
-    setEditingCategory(null);
-    setCategoryFormData({
-      name: "",
-      description: "",
-      contentType: "MOVIE"
-    });
-    setIsCategoryDialogOpen(true);
-  };
-
-  const handleSaveCategory = async () => {
-    if (!categoryFormData.name.trim()) {
-      alert('Category name is required');
-      return;
-    }
-
-    if (!categoryFormData.contentType) {
-      alert('Content type is required');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const url = editingCategory 
-        ? `/api/categories/${editingCategory.id}`
-        : '/api/categories';
-      
-      const method = editingCategory ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(categoryFormData),
-      });
-
-      if (response.ok) {
-        await fetchData();
-        setIsCategoryDialogOpen(false);
-        setEditingCategory(null);
-        // Reset form
-        setCategoryFormData({
-          name: "",
-          description: "",
-          contentType: "MOVIE"
-        });
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to save category');
-      }
-    } catch (error) {
-      console.error('Error saving category:', error);
-      alert('Failed to save category. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    if (confirm('Are you sure you want to delete this category?')) {
-      try {
-        const response = await fetch(`/api/categories/${id}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          await fetchData();
-        } else {
-          const error = await response.json();
-          alert(error.error || 'Failed to delete category');
-        }
-      } catch (error) {
-        console.error('Error deleting category:', error);
-        alert('Failed to delete category. Please try again.');
-      }
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await fetch('/api/admin/logout', {
@@ -402,7 +317,6 @@ export default function AdminPanel() {
       window.location.href = '/admin-login';
     } catch (error) {
       console.error('Error logging out:', error);
-      // Even if there's an error, redirect to login
       window.location.href = '/admin-login';
     }
   };
@@ -431,7 +345,7 @@ export default function AdminPanel() {
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
                 <img
-                  src={item.posterUrl || "/api/placeholder/100/150"}
+                  src={item.posterUrl || "https://via.placeholder.com/100x150"}
                   alt={item.title}
                   className="w-16 h-20 object-cover rounded"
                 />
@@ -510,31 +424,19 @@ export default function AdminPanel() {
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-8 bg-gray-800">
-            <TabsTrigger 
-              value="dashboard" 
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
-            >
+            <TabsTrigger value="dashboard" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger 
-              value="movies" 
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
-            >
+            <TabsTrigger value="movies" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
               <Film className="w-4 h-4 mr-2" />
               Movies
             </TabsTrigger>
-            <TabsTrigger 
-              value="web-series" 
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
-            >
+            <TabsTrigger value="web-series" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
               <Tv className="w-4 h-4 mr-2" />
               Web Series
             </TabsTrigger>
-            <TabsTrigger 
-              value="categories" 
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
-            >
+            <TabsTrigger value="categories" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
               <FolderOpen className="w-4 h-4 mr-2" />
               Categories
             </TabsTrigger>
@@ -610,7 +512,7 @@ export default function AdminPanel() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-white">Categories</h2>
-                <Button onClick={handleAddCategory} className="bg-purple-600 hover:bg-purple-700">
+                <Button onClick={() => setIsCategoryDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Category
                 </Button>
@@ -632,24 +534,6 @@ export default function AdminPanel() {
                               {category.contentCount} items
                             </Badge>
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditCategory(category)}
-                            className="border-gray-600 text-white hover:bg-gray-700"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteCategory(category.id)}
-                            className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -789,100 +673,4 @@ export default function AdminPanel() {
                   id="posterUrl"
                   value={formData.posterUrl}
                   onChange={(e) => setFormData(prev => ({ ...prev, posterUrl: e.target.value }))}
-                  className="bg-gray-700 border-gray-600 text-white flex-1"
-                  placeholder="https://... or upload below"
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <Button
-                  type="button"
-                  onClick={() => document.getElementById('image-upload')?.click()}
-                  disabled={uploading}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  {uploading ? 'Uploading...' : <Upload className="w-4 h-4" />}
-                </Button>
-              </div>
-              {formData.posterUrl && (
-                <div className="mt-2">
-                  <img
-                    src={formData.posterUrl}
-                    alt="Poster preview"
-                    className="w-32 h-48 object-cover rounded"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-gray-600 text-white hover:bg-gray-700">
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700">
-                {saving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> Save</>}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Category Add/Edit Dialog */}
-      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="categoryName">Name *</Label>
-              <Input
-                id="categoryName"
-                value={categoryFormData.name}
-                onChange={(e) => setCategoryFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="bg-gray-700 border-gray-600 text-white"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="categoryDescription">Description</Label>
-              <Textarea
-                id="categoryDescription"
-                value={categoryFormData.description}
-                onChange={(e) => setCategoryFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="bg-gray-700 border-gray-600 text-white"
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="categoryContentType">Content Type *</Label>
-              <Select value={categoryFormData.contentType} onValueChange={(value: 'MOVIE' | 'WEB_SERIES') => setCategoryFormData(prev => ({ ...prev, contentType: value }))}>
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600">
-                  <SelectItem value="MOVIE">Movie</SelectItem>
-                  <SelectItem value="WEB_SERIES">Web Series</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)} className="border-gray-600 text-white hover:bg-gray-700">
-                Cancel
-              </Button>
-              <Button onClick={handleSaveCategory} disabled={saving} className="bg-purple-600 hover:bg-purple-700">
-                {saving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> Save</>}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+                  className="bg-gray-700 border-gray-600 text
