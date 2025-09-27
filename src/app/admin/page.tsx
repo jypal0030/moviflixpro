@@ -7,31 +7,15 @@ import {
   Film, 
   Tv, 
   FolderOpen, 
-  Users, 
-  Settings, 
-  BarChart3, 
-  Database,
-  Upload,
-  Download,
-  Bell,
-  Search,
   Plus, 
   Edit, 
   Trash2, 
+  Search,
   Save,
   X,
-  Eye,
-  Filter,
-  Calendar,
-  TrendingUp,
-  UserCheck,
-  Shield,
-  LogOut,
-  Activity,
-  FileText,
+  Upload,
   Image as ImageIcon,
-  Globe,
-  Zap
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,9 +26,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 
 interface Content {
   id: string;
@@ -62,8 +43,6 @@ interface Content {
     name: string;
     slug: string;
   };
-  createdAt: string;
-  views: number;
 }
 
 interface Category {
@@ -75,40 +54,18 @@ interface Category {
   contentCount: number;
 }
 
-interface UserActivity {
-  id: string;
-  userId: string;
-  action: string;
-  contentId?: string;
-  timestamp: string;
-  ipAddress: string;
-  userAgent: string;
-}
-
-interface SystemStats {
-  totalContent: number;
-  totalUsers: number;
-  totalViews: number;
-  todayViews: number;
-  popularContent: Content[];
-  recentActivity: UserActivity[];
-}
-
 export default function AdminPanel() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [movies, setMovies] = useState<Content[]>([]);
   const [webSeries, setWebSeries] = useState<Content[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
-  const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingItem, setEditingItem] = useState<Content | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -133,22 +90,9 @@ export default function AdminPanel() {
     contentType: "MOVIE" as 'MOVIE' | 'WEB_SERIES'
   });
 
-  // Settings state
-  const [settings, setSettings] = useState({
-    siteName: "MoviFlixPro",
-    siteDescription: "Your ultimate entertainment destination",
-    enableRegistration: false,
-    enableComments: false,
-    maxUploadSize: "10",
-    seoKeywords: "movies, web series, streaming, entertainment",
-    analyticsEnabled: true,
-    maintenanceMode: false
-  });
-
   useEffect(() => {
     checkAuth();
     fetchData();
-    fetchSystemStats();
   }, []);
 
   const checkAuth = async () => {
@@ -179,41 +123,10 @@ export default function AdminPanel() {
       const webSeriesRes = await fetch('/api/content?type=WEB_SERIES');
       const webSeriesData = await webSeriesRes.json();
       setWebSeries(webSeriesData);
-
-      // Fetch user activities (mock data for now)
-      const mockActivities: UserActivity[] = [
-        {
-          id: "1",
-          userId: "user1",
-          action: "viewed",
-          contentId: "movie1",
-          timestamp: new Date().toISOString(),
-          ipAddress: "192.168.1.1",
-          userAgent: "Mozilla/5.0..."
-        }
-      ];
-      setUserActivities(mockActivities);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchSystemStats = async () => {
-    try {
-      // Mock stats for now
-      const stats: SystemStats = {
-        totalContent: movies.length + webSeries.length,
-        totalUsers: 1250,
-        totalViews: 45670,
-        todayViews: 1234,
-        popularContent: movies.slice(0, 5),
-        recentActivity: userActivities.slice(0, 10)
-      };
-      setSystemStats(stats);
-    } catch (error) {
-      console.error('Error fetching system stats:', error);
     }
   };
 
@@ -252,8 +165,24 @@ export default function AdminPanel() {
   };
 
   const handleSave = async () => {
+    // Basic validation
     if (!formData.title.trim()) {
       alert('Title is required');
+      return;
+    }
+    
+    if (!formData.contentType) {
+      alert('Content type is required');
+      return;
+    }
+
+    if (formData.year && (isNaN(parseInt(formData.year)) || parseInt(formData.year) < 1900 || parseInt(formData.year) > new Date().getFullYear() + 5)) {
+      alert('Please enter a valid year');
+      return;
+    }
+
+    if (formData.rating && (isNaN(parseFloat(formData.rating)) || parseFloat(formData.rating) < 0 || parseFloat(formData.rating) > 10)) {
+      alert('Rating must be between 0 and 10');
       return;
     }
 
@@ -272,6 +201,8 @@ export default function AdminPanel() {
       
       const method = editingItem ? 'PUT' : 'POST';
 
+      console.log('Saving content:', { url, method, payload });
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -280,9 +211,11 @@ export default function AdminPanel() {
         body: JSON.stringify(payload),
       });
 
+      const responseData = await response.json();
+      console.log('Response:', responseData);
+
       if (response.ok) {
         await fetchData();
-        await fetchSystemStats();
         setIsDialogOpen(false);
         setEditingItem(null);
         // Reset form
@@ -298,15 +231,56 @@ export default function AdminPanel() {
           contentType: "MOVIE",
           categoryId: ""
         });
+        alert('Content saved successfully!');
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to save content');
+        console.error('Server error:', responseData);
+        alert(responseData.error || 'Failed to save content');
       }
     } catch (error) {
       console.error('Error saving content:', error);
       alert('Failed to save content. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Image upload function
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      console.log('Uploading image:', file.name, file.type, file.size);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      console.log('Upload response:', result);
+
+      if (response.ok) {
+        setFormData(prev => ({
+          ...prev,
+          posterUrl: result.url
+        }));
+        alert('Image uploaded successfully!');
+      } else {
+        console.error('Upload error:', result);
+        alert(result.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -319,7 +293,6 @@ export default function AdminPanel() {
 
         if (response.ok) {
           await fetchData();
-          await fetchSystemStats();
         } else {
           const error = await response.json();
           alert(error.error || 'Failed to delete content');
@@ -331,18 +304,93 @@ export default function AdminPanel() {
     }
   };
 
-  const handleSaveSettings = async () => {
+  // Category management functions
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setCategoryFormData({
+      name: category.name,
+      description: category.description || "",
+      contentType: category.contentType
+    });
+    setIsCategoryDialogOpen(true);
+  };
+
+  const handleAddCategory = () => {
+    setEditingCategory(null);
+    setCategoryFormData({
+      name: "",
+      description: "",
+      contentType: "MOVIE"
+    });
+    setIsCategoryDialogOpen(true);
+  };
+
+  const handleSaveCategory = async () => {
+    if (!categoryFormData.name.trim()) {
+      alert('Category name is required');
+      return;
+    }
+
+    if (!categoryFormData.contentType) {
+      alert('Content type is required');
+      return;
+    }
+
     setSaving(true);
     try {
-      // Save settings to localStorage or API
-      localStorage.setItem('adminSettings', JSON.stringify(settings));
-      setIsSettingsOpen(false);
-      alert('Settings saved successfully!');
+      const url = editingCategory 
+        ? `/api/categories/${editingCategory.id}`
+        : '/api/categories';
+      
+      const method = editingCategory ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(categoryFormData),
+      });
+
+      if (response.ok) {
+        await fetchData();
+        setIsCategoryDialogOpen(false);
+        setEditingCategory(null);
+        // Reset form
+        setCategoryFormData({
+          name: "",
+          description: "",
+          contentType: "MOVIE"
+        });
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to save category');
+      }
     } catch (error) {
-      console.error('Error saving settings:', error);
-      alert('Failed to save settings.');
+      console.error('Error saving category:', error);
+      alert('Failed to save category. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (confirm('Are you sure you want to delete this category?')) {
+      try {
+        const response = await fetch(`/api/categories/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          await fetchData();
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Failed to delete category');
+        }
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        alert('Failed to delete category. Please try again.');
+      }
     }
   };
 
@@ -354,6 +402,7 @@ export default function AdminPanel() {
       window.location.href = '/admin-login';
     } catch (error) {
       console.error('Error logging out:', error);
+      // Even if there's an error, redirect to login
       window.location.href = '/admin-login';
     }
   };
@@ -370,122 +419,84 @@ export default function AdminPanel() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">{type === 'MOVIE' ? 'Movies' : 'Web Series'}</h2>
-        <div className="flex gap-2">
-          <Button onClick={() => handleAddNew(type)} className="bg-purple-600 hover:bg-purple-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Add {type === 'MOVIE' ? 'Movie' : 'Web Series'}
-          </Button>
-          <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-700">
-            <Upload className="w-4 h-4 mr-2" />
-            Bulk Upload
-          </Button>
-        </div>
+        <Button onClick={() => handleAddNew(type)} className="bg-purple-600 hover:bg-purple-700">
+          <Plus className="w-4 h-4 mr-2" />
+          Add {type === 'MOVIE' ? 'Movie' : 'Web Series'}
+        </Button>
       </div>
       
-      <div className="bg-gray-800 rounded-lg border border-gray-700">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-gray-700">
-              <TableHead className="text-gray-300">Poster</TableHead>
-              <TableHead className="text-gray-300">Title</TableHead>
-              <TableHead className="text-gray-300">Year</TableHead>
-              <TableHead className="text-gray-300">Duration</TableHead>
-              <TableHead className="text-gray-300">Rating</TableHead>
-              <TableHead className="text-gray-300">Quality</TableHead>
-              <TableHead className="text-gray-300">Category</TableHead>
-              <TableHead className="text-gray-300">Views</TableHead>
-              <TableHead className="text-gray-300">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id} className="border-gray-700">
-                <TableCell>
-                  <img
-                    src={item.posterUrl || "/api/placeholder/60/90"}
-                    alt={item.title}
-                    className="w-12 h-16 object-cover rounded"
-                  />
-                </TableCell>
-                <TableCell className="text-white font-medium">{item.title}</TableCell>
-                <TableCell className="text-gray-300">{item.year}</TableCell>
-                <TableCell className="text-gray-300">{item.duration}</TableCell>
-                <TableCell className="text-gray-300">
-                  <div className="flex items-center gap-1">
-                    <span className="text-yellow-400">★</span>
-                    {item.rating}
+      <div className="grid gap-4">
+        {items.map((item) => (
+          <Card key={item.id} className="bg-gray-800 border-gray-700">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <img
+                  src={item.posterUrl || "/api/placeholder/100/150"}
+                  alt={item.title}
+                  className="w-16 h-20 object-cover rounded"
+                />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white">{item.title}</h3>
+                  <div className="flex items-center gap-4 text-sm text-gray-300 mt-1">
+                    <span>{item.year}</span>
+                    <span>{item.duration}</span>
+                    <Badge className="bg-purple-600">
+                      {item.quality === 'FOUR_K' ? '4K' : item.quality === 'FULL_HD' ? 'HD' : item.quality}
+                    </Badge>
+                    <Badge variant="outline" className="border-gray-600 text-gray-300">
+                      {item.category?.name}
+                    </Badge>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className="bg-purple-600">
-                    {item.quality === 'FOUR_K' ? '4K' : item.quality === 'FULL_HD' ? 'HD' : item.quality}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-gray-300">{item.category?.name}</TableCell>
-                <TableCell className="text-gray-300">{item.views || 0}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(item)}
-                      className="border-gray-600 text-white hover:bg-gray-700"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(item.id)}
-                      className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-gray-600 text-white hover:bg-gray-700"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-xs text-yellow-400">★ {item.rating}</span>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(item)}
+                    className="border-gray-600 text-white hover:bg-gray-700"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDelete(item.id)}
+                    className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 flex items-center justify-center">
         <div className="text-white">Loading admin panel...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900">
       {/* Admin Header */}
       <header className="bg-black border-b border-gray-800">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Shield className="w-6 h-6 text-purple-500" />
-                <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
-              </div>
-              <Badge className="bg-green-600">Online</Badge>
-            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Admin Panel
+            </h1>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setIsSettingsOpen(true)} className="border-gray-600 text-white hover:bg-gray-800">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
               <Button variant="outline" onClick={() => window.open('/', '_blank')} className="border-gray-600 text-white hover:bg-gray-800">
-                View Site
+                Back to Site
               </Button>
               <Button variant="outline" onClick={handleLogout} className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white">
                 <LogOut className="w-4 h-4 mr-2" />
@@ -498,365 +509,164 @@ export default function AdminPanel() {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-8 bg-gray-800">
-            <TabsTrigger value="dashboard" className="data-[state=active]:bg-purple-600">
+          <TabsList className="grid w-full grid-cols-4 mb-8 bg-gray-800">
+            <TabsTrigger 
+              value="dashboard" 
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+            >
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger value="movies" className="data-[state=active]:bg-purple-600">
+            <TabsTrigger 
+              value="movies" 
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+            >
               <Film className="w-4 h-4 mr-2" />
               Movies
             </TabsTrigger>
-            <TabsTrigger value="web-series" className="data-[state=active]:bg-purple-600">
+            <TabsTrigger 
+              value="web-series" 
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+            >
               <Tv className="w-4 h-4 mr-2" />
               Web Series
             </TabsTrigger>
-            <TabsTrigger value="categories" className="data-[state=active]:bg-purple-600">
+            <TabsTrigger 
+              value="categories" 
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+            >
               <FolderOpen className="w-4 h-4 mr-2" />
               Categories
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="data-[state=active]:bg-purple-600">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-purple-600">
-              <Users className="w-4 h-4 mr-2" />
-              Users
-            </TabsTrigger>
           </TabsList>
 
-          {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="bg-gray-800 border-gray-700">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                    <Film className="w-4 h-4" />
-                    Total Content
-                  </CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-300">Total Movies</CardTitle>
+                  <Film className="h-4 w-4 text-purple-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white">{systemStats?.totalContent || 0}</div>
-                  <p className="text-xs text-gray-400">Movies + Series</p>
+                  <div className="text-2xl font-bold text-white">{movies.length}</div>
                 </CardContent>
               </Card>
-              
               <Card className="bg-gray-800 border-gray-700">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Total Users
-                  </CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-300">Total Web Series</CardTitle>
+                  <Tv className="h-4 w-4 text-purple-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white">{systemStats?.totalUsers || 0}</div>
-                  <p className="text-xs text-gray-400">Registered users</p>
+                  <div className="text-2xl font-bold text-white">{webSeries.length}</div>
                 </CardContent>
               </Card>
-              
               <Card className="bg-gray-800 border-gray-700">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
-                    Total Views
-                  </CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-300">Total Categories</CardTitle>
+                  <FolderOpen className="h-4 w-4 text-purple-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white">{systemStats?.totalViews || 0}</div>
-                  <p className="text-xs text-gray-400">All time views</p>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                    <Activity className="w-4 h-4" />
-                    Today's Views
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">{systemStats?.todayViews || 0}</div>
-                  <p className="text-xs text-gray-400">Last 24 hours</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Popular Content
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {systemStats?.popularContent?.slice(0, 5).map((item) => (
-                      <div key={item.id} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={item.posterUrl || "/api/placeholder/40/60"}
-                            alt={item.title}
-                            className="w-8 h-12 object-cover rounded"
-                          />
-                          <span className="text-gray-300">{item.title}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500">{item.views || 0} views</span>
-                          <Badge className="bg-purple-600 text-xs">
-                            {item.quality === 'FOUR_K' ? '4K' : item.quality}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    Recent Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {userActivities.slice(0, 5).map((activity) => (
-                      <div key={activity.id} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <UserCheck className="w-4 h-4 text-green-400" />
-                          <span className="text-gray-300">
-                            User {activity.userId} {activity.action}
-                          </span>
-                        </div>
-                        <span className="text-gray-500 text-xs">
-                          {new Date(activity.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <div className="text-2xl font-bold text-white">{categories.length}</div>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          {/* Movies Tab */}
-          <TabsContent value="movies" className="space-y-6">
-            <div className="flex justify-between items-center">
+          <TabsContent value="movies">
+            <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <h2 className="text-2xl font-bold text-white">Movies Management</h2>
-                <Badge className="bg-blue-600">{filteredMovies.length} Movies</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="relative">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     placeholder="Search movies..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-gray-800 border-gray-700 text-white pl-10 w-64"
+                    className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400"
                   />
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                 </div>
-                <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-700">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filter
-                </Button>
               </div>
+              <ContentTable items={filteredMovies} type="MOVIE" />
             </div>
-            <ContentTable items={filteredMovies} type="MOVIE" />
           </TabsContent>
 
-          {/* Web Series Tab */}
-          <TabsContent value="web-series" className="space-y-6">
-            <div className="flex justify-between items-center">
+          <TabsContent value="web-series">
+            <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <h2 className="text-2xl font-bold text-white">Web Series Management</h2>
-                <Badge className="bg-green-600">{filteredWebSeries.length} Series</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="relative">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Search series..."
+                    placeholder="Search web series..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-gray-800 border-gray-700 text-white pl-10 w-64"
+                    className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400"
                   />
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                 </div>
-                <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-700">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filter
+              </div>
+              <ContentTable items={filteredWebSeries} type="WEB_SERIES" />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="categories">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">Categories</h2>
+                <Button onClick={handleAddCategory} className="bg-purple-600 hover:bg-purple-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Category
                 </Button>
               </div>
-            </div>
-            <ContentTable items={filteredWebSeries} type="WEB_SERIES" />
-          </TabsContent>
-
-          {/* Categories Tab */}
-          <TabsContent value="categories" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-white">Categories Management</h2>
-              <Button onClick={() => setIsCategoryDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Category
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {categories.map((category) => (
-                <Card key={category.id} className="bg-gray-800 border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center justify-between">
-                      {category.name}
-                      <Badge className="bg-purple-600">
-                        {category.contentCount} items
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-300 text-sm mb-4">{category.description}</p>
-                    <div className="flex justify-between items-center">
-                      <Badge variant="outline" className="border-gray-600 text-gray-300">
-                        {category.contentType}
-                      </Badge>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditCategory(category)}
-                          className="border-gray-600 text-white hover:bg-gray-700"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteCategory(category.id)}
-                          className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white">Content Performance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-300">Movie Views</span>
-                        <span className="text-white">75%</span>
-                      </div>
-                      <Progress value={75} className="h-2" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-300">Series Views</span>
-                        <span className="text-white">25%</span>
-                      </div>
-                      <Progress value={25} className="h-2" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white">Quality Distribution</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-300">4K Content</span>
-                        <span className="text-white">15%</span>
-                      </div>
-                      <Progress value={15} className="h-2" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-300">HD Content</span>
-                        <span className="text-white">60%</span>
-                      </div>
-                      <Progress value={60} className="h-2" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-300">SD Content</span>
-                        <span className="text-white">25%</span>
-                      </div>
-                      <Progress value={25} className="h-2" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Users Tab */}
-          <TabsContent value="users" className="space-y-6">
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-white">User Activity Log</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gray-900 rounded-lg border border-gray-700">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-gray-700">
-                        <TableHead className="text-gray-300">User ID</TableHead>
-                        <TableHead className="text-gray-300">Action</TableHead>
-                        <TableHead className="text-gray-300">Content</TableHead>
-                        <TableHead className="text-gray-300">IP Address</TableHead>
-                        <TableHead className="text-gray-300">Timestamp</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {userActivities.map((activity) => (
-                        <TableRow key={activity.id} className="border-gray-700">
-                          <TableCell className="text-gray-300">{activity.userId}</TableCell>
-                          <TableCell>
-                            <Badge className="bg-blue-600">
-                              {activity.action}
+              
+              <div className="grid gap-4">
+                {categories.map((category) => (
+                  <Card key={category.id} className="bg-gray-800 border-gray-700">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-white">{category.name}</h3>
+                          <p className="text-sm text-gray-300">{category.description}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge className="bg-purple-600">
+                              {category.contentType}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="text-gray-300">{activity.contentId || '-'}</TableCell>
-                          <TableCell className="text-gray-300">{activity.ipAddress}</TableCell>
-                          <TableCell className="text-gray-300">
-                            {new Date(activity.timestamp).toLocaleString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+                            <Badge variant="outline" className="border-gray-600 text-gray-300">
+                              {category.contentCount} items
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditCategory(category)}
+                            className="border-gray-600 text-white hover:bg-gray-700"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Content Edit/Add Dialog */}
+      {/* Content Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              {editingItem ? 'Edit Content' : 'Add New Content'}
-            </DialogTitle>
+            <DialogTitle>{editingItem ? 'Edit Content' : 'Add New Content'}</DialogTitle>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -864,31 +674,31 @@ export default function AdminPanel() {
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  className="bg-gray-800 border-gray-700 text-white"
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  className="bg-gray-700 border-gray-600 text-white"
                 />
               </div>
               <div>
                 <Label htmlFor="contentType">Content Type *</Label>
-                <Select value={formData.contentType} onValueChange={(value) => setFormData({...formData, contentType: value as 'MOVIE' | 'WEB_SERIES'})}>
-                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                <Select value={formData.contentType} onValueChange={(value: 'MOVIE' | 'WEB_SERIES') => setFormData(prev => ({ ...prev, contentType: value }))}>
+                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-gray-700 border-gray-600">
                     <SelectItem value="MOVIE">Movie</SelectItem>
                     <SelectItem value="WEB_SERIES">Web Series</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-
+            
             <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="bg-gray-800 border-gray-700 text-white"
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                className="bg-gray-700 border-gray-600 text-white"
                 rows={3}
               />
             </div>
@@ -900,8 +710,8 @@ export default function AdminPanel() {
                   id="year"
                   type="number"
                   value={formData.year}
-                  onChange={(e) => setFormData({...formData, year: e.target.value})}
-                  className="bg-gray-800 border-gray-700 text-white"
+                  onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value }))}
+                  className="bg-gray-700 border-gray-600 text-white"
                 />
               </div>
               <div>
@@ -909,13 +719,13 @@ export default function AdminPanel() {
                 <Input
                   id="duration"
                   value={formData.duration}
-                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                  className="bg-gray-800 border-gray-700 text-white"
-                  placeholder="2h 30m"
+                  onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
+                  className="bg-gray-700 border-gray-600 text-white"
+                  placeholder="e.g., 2h 30m"
                 />
               </div>
               <div>
-                <Label htmlFor="rating">Rating</Label>
+                <Label htmlFor="rating">Rating (0-10)</Label>
                 <Input
                   id="rating"
                   type="number"
@@ -923,8 +733,8 @@ export default function AdminPanel() {
                   min="0"
                   max="10"
                   value={formData.rating}
-                  onChange={(e) => setFormData({...formData, rating: e.target.value})}
-                  className="bg-gray-800 border-gray-700 text-white"
+                  onChange={(e) => setFormData(prev => ({ ...prev, rating: e.target.value }))}
+                  className="bg-gray-700 border-gray-600 text-white"
                 />
               </div>
             </div>
@@ -932,11 +742,11 @@ export default function AdminPanel() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="quality">Quality</Label>
-                <Select value={formData.quality} onValueChange={(value) => setFormData({...formData, quality: value})}>
-                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                    <SelectValue />
+                <Select value={formData.quality} onValueChange={(value) => setFormData(prev => ({ ...prev, quality: value }))}>
+                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                    <SelectValue placeholder="Select quality" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-gray-700 border-gray-600">
                     <SelectItem value="HD">HD</SelectItem>
                     <SelectItem value="FULL_HD">Full HD</SelectItem>
                     <SelectItem value="FOUR_K">4K</SelectItem>
@@ -946,12 +756,12 @@ export default function AdminPanel() {
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select value={formData.categoryId} onValueChange={(value) => setFormData({...formData, categoryId: value})}>
-                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                <Select value={formData.categoryId} onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}>
+                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
+                  <SelectContent className="bg-gray-700 border-gray-600">
+                    {categories.filter(cat => cat.contentType === formData.contentType).map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
                       </SelectItem>
@@ -966,167 +776,108 @@ export default function AdminPanel() {
               <Input
                 id="telegramUrl"
                 value={formData.telegramUrl}
-                onChange={(e) => setFormData({...formData, telegramUrl: e.target.value})}
-                className="bg-gray-800 border-gray-700 text-white"
-                placeholder="https://t.me/yourchannel"
+                onChange={(e) => setFormData(prev => ({ ...prev, telegramUrl: e.target.value }))}
+                className="bg-gray-700 border-gray-600 text-white"
+                placeholder="https://t.me/..."
               />
             </div>
 
             <div>
               <Label htmlFor="posterUrl">Poster URL</Label>
-              <Input
-                id="posterUrl"
-                value={formData.posterUrl}
-                onChange={(e) => setFormData({...formData, posterUrl: e.target.value})}
-                className="bg-gray-800 border-gray-700 text-white"
-                placeholder="https://example.com/poster.jpg"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="posterUrl"
+                  value={formData.posterUrl}
+                  onChange={(e) => setFormData(prev => ({ ...prev, posterUrl: e.target.value }))}
+                  className="bg-gray-700 border-gray-600 text-white flex-1"
+                  placeholder="https://... or upload below"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <Button
+                  type="button"
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                  disabled={uploading}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {uploading ? 'Uploading...' : <Upload className="w-4 h-4" />}
+                </Button>
+              </div>
+              {formData.posterUrl && (
+                <div className="mt-2">
+                  <img
+                    src={formData.posterUrl}
+                    alt="Poster preview"
+                    className="w-32 h-48 object-cover rounded"
+                  />
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-2 pt-4">
-              <Button 
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-purple-600 hover:bg-purple-700 flex-1"
-              >
-                {saving ? 'Saving...' : (editingItem ? 'Update' : 'Create')}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsDialogOpen(false)}
-                className="border-gray-600 text-white hover:bg-gray-700"
-              >
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-gray-600 text-white hover:bg-gray-700">
                 Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700">
+                {saving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> Save</>}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Settings Dialog */}
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+      {/* Category Add/Edit Dialog */}
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">System Settings</DialogTitle>
+            <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
           </DialogHeader>
-          
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-4">General Settings</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="siteName">Site Name</Label>
-                  <Input
-                    id="siteName"
-                    value={settings.siteName}
-                    onChange={(e) => setSettings({...settings, siteName: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="siteDescription">Site Description</Label>
-                  <Textarea
-                    id="siteDescription"
-                    value={settings.siteDescription}
-                    onChange={(e) => setSettings({...settings, siteDescription: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
-                    rows={3}
-                  />
-                </div>
-              </div>
+              <Label htmlFor="categoryName">Name *</Label>
+              <Input
+                id="categoryName"
+                value={categoryFormData.name}
+                onChange={(e) => setCategoryFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="categoryDescription">Description</Label>
+              <Textarea
+                id="categoryDescription"
+                value={categoryFormData.description}
+                onChange={(e) => setCategoryFormData(prev => ({ ...prev, description: e.target.value }))}
+                className="bg-gray-700 border-gray-600 text-white"
+                rows={3}
+              />
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold mb-4">Features</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Enable User Registration</Label>
-                    <p className="text-sm text-gray-400">Allow users to register accounts</p>
-                  </div>
-                  <Switch
-                    checked={settings.enableRegistration}
-                    onCheckedChange={(checked) => setSettings({...settings, enableRegistration: checked})}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Enable Comments</Label>
-                    <p className="text-sm text-gray-400">Allow users to comment on content</p>
-                  </div>
-                  <Switch
-                    checked={settings.enableComments}
-                    onCheckedChange={(checked) => setSettings({...settings, enableComments: checked})}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Enable Analytics</Label>
-                    <p className="text-sm text-gray-400">Track user behavior and statistics</p>
-                  </div>
-                  <Switch
-                    checked={settings.analyticsEnabled}
-                    onCheckedChange={(checked) => setSettings({...settings, analyticsEnabled: checked})}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Maintenance Mode</Label>
-                    <p className="text-sm text-gray-400">Put site in maintenance mode</p>
-                  </div>
-                  <Switch
-                    checked={settings.maintenanceMode}
-                    onCheckedChange={(checked) => setSettings({...settings, maintenanceMode: checked})}
-                  />
-                </div>
-              </div>
+              <Label htmlFor="categoryContentType">Content Type *</Label>
+              <Select value={categoryFormData.contentType} onValueChange={(value: 'MOVIE' | 'WEB_SERIES') => setCategoryFormData(prev => ({ ...prev, contentType: value }))}>
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  <SelectItem value="MOVIE">Movie</SelectItem>
+                  <SelectItem value="WEB_SERIES">Web Series</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Upload Settings</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="maxUploadSize">Max Upload Size (MB)</Label>
-                  <Input
-                    id="maxUploadSize"
-                    value={settings.maxUploadSize}
-                    onChange={(e) => setSettings({...settings, maxUploadSize: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold mb-4">SEO Settings</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="seoKeywords">SEO Keywords</Label>
-                  <Textarea
-                    id="seoKeywords"
-                    value={settings.seoKeywords}
-                    onChange={(e) => setSettings({...settings, seoKeywords: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
-                    placeholder="movies, web series, streaming, entertainment"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button 
-                onClick={handleSaveSettings}
-                disabled={saving}
-                className="bg-purple-600 hover:bg-purple-700 flex-1"
-              >
-                {saving ? 'Saving...' : 'Save Settings'}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsSettingsOpen(false)}
-                className="border-gray-600 text-white hover:bg-gray-700"
-              >
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)} className="border-gray-600 text-white hover:bg-gray-700">
                 Cancel
+              </Button>
+              <Button onClick={handleSaveCategory} disabled={saving} className="bg-purple-600 hover:bg-purple-700">
+                {saving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> Save</>}
               </Button>
             </div>
           </div>
@@ -1135,88 +886,3 @@ export default function AdminPanel() {
     </div>
   );
 }
-
-// Category management functions
-const handleEditCategory = (category: Category) => {
-  setEditingCategory(category);
-  setCategoryFormData({
-    name: category.name,
-    description: category.description || "",
-    contentType: category.contentType
-  });
-  setIsCategoryDialogOpen(true);
-};
-
-const handleAddCategory = () => {
-  setEditingCategory(null);
-  setCategoryFormData({
-    name: "",
-    description: "",
-    contentType: "MOVIE"
-  });
-  setIsCategoryDialogOpen(true);
-};
-
-const handleSaveCategory = async () => {
-  if (!categoryFormData.name.trim()) {
-    alert('Category name is required');
-    return;
-  }
-
-  setSaving(true);
-  try {
-    const url = editingCategory 
-      ? `/api/categories/${editingCategory.id}`
-      : '/api/categories';
-    
-    const method = editingCategory ? 'PUT' : 'POST';
-
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(categoryFormData),
-    });
-
-    if (response.ok) {
-      await fetchData();
-      setIsCategoryDialogOpen(false);
-      setEditingCategory(null);
-      // Reset form
-      setCategoryFormData({
-        name: "",
-        description: "",
-        contentType: "MOVIE"
-      });
-    } else {
-      const error = await response.json();
-      alert(error.error || 'Failed to save category');
-    }
-  } catch (error) {
-    console.error('Error saving category:', error);
-    alert('Failed to save category. Please try again.');
-  } finally {
-    setSaving(false);
-  }
-};
-
-const handleDeleteCategory = async (id: string) => {
-  if (confirm('Are you sure you want to delete this category?')) {
-    try {
-      const response = await fetch(`/api/categories/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        await fetchData();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to delete category');
-      }
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      alert('Failed to delete category. Please try again.');
-    }
-  }
-};

@@ -1,67 +1,113 @@
-import { db } from '@/lib/db';
-import { MemoryStorage } from '@/lib/storage';
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Content API called');
-    
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
+    const contentType = searchParams.get('type');
     const categoryId = searchParams.get('category');
+    const search = searchParams.get('search');
+
+    let where: any = {};
     
-    console.log('Content request - Type:', type, 'Category:', categoryId);
-    
-    // Validate type parameter
-    if (!type || (type !== 'MOVIE' && type !== 'WEB_SERIES')) {
-      return Response.json({ error: 'Invalid type parameter' }, { status: 400 });
+    if (contentType) {
+      where.contentType = contentType;
     }
     
-    let allContent: any[] = [];
-    
-    // Try to get from database first
-    try {
-      const whereClause: any = { contentType: type };
-      if (categoryId) {
-        whereClause.categoryId = categoryId;
-      }
-      
-      const dbContent = await db.content.findMany({
-        where: whereClause,
-        include: {
-          category: true
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      });
-      
-      allContent = dbContent;
-      console.log('Database content found:', dbContent.length);
-    } catch (dbError) {
-      console.log('Database error, using fallback data:', dbError);
+    if (categoryId) {
+      where.categoryId = categoryId;
     }
     
-    // Get content from memory storage
-    const storage = MemoryStorage.getInstance();
-    const memoryContent = storage.getContent(type, categoryId);
-    console.log('Memory content found:', memoryContent.length);
-    
-    // Combine database and memory content
-    const combinedContent = [...memoryContent, ...allContent];
-    
-    // Remove duplicates (based on title)
-    const uniqueContent = combinedContent.filter((item, index, self) => 
-      index === self.findIndex((t) => t.title === item.title)
-    );
-    
-    console.log('Total unique content returned:', uniqueContent.length);
-    return Response.json(uniqueContent);
-    
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const contents = await db.content.findMany({
+      where,
+      include: {
+        category: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return NextResponse.json(contents);
   } catch (error) {
-    console.error('Content API Error:', error);
+    console.error('Error fetching contents:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch contents' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    console.log('POST request body:', body);
     
-    // Ultimate fallback
-    return Response.json([]);
+    const {
+      title,
+      description,
+      posterUrl,
+      year,
+      duration,
+      rating,
+      quality,
+      telegramUrl,
+      contentType,
+      categoryId,
+    } = body;
+
+    if (!title || !contentType) {
+      return NextResponse.json(
+        { error: 'Title and content type are required' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Creating content with data:', {
+      title,
+      description,
+      posterUrl,
+      year,
+      duration,
+      rating,
+      quality,
+      telegramUrl,
+      contentType,
+      categoryId,
+    });
+
+    const content = await db.content.create({
+      data: {
+        title,
+        description,
+        posterUrl,
+        year: year ? parseInt(year) : null,
+        duration,
+        rating: rating ? parseFloat(rating) : null,
+        quality,
+        telegramUrl,
+        contentType,
+        categoryId,
+      },
+      include: {
+        category: true,
+      },
+    });
+
+    console.log('Content created successfully:', content);
+    return NextResponse.json(content, { status: 201 });
+  } catch (error) {
+    console.error('Error creating content:', error);
+    return NextResponse.json(
+      { error: 'Failed to create content', details: error.message },
+      { status: 500 }
+    );
   }
 }
