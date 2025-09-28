@@ -8,6 +8,7 @@ import HorizontalScroll from '@/components/HorizontalScroll';
 import CategoryRow from '@/components/CategoryRow';
 import MoviePopup from '@/components/MoviePopup';
 import EnhancedSearch from '@/components/EnhancedSearch';
+import DownloadButton from '@/components/DownloadButton';
 
 interface Content {
   id: string;
@@ -130,6 +131,7 @@ export default function Home() {
           
           <div className="flex items-center space-x-2 sm:space-x-4">
             <EnhancedSearch />
+            <DownloadButton />
             <Button 
               variant="ghost" 
               size="icon"
