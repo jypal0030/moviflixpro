@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Content {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  posterUrl   String?
+  year        Int?
+  duration    String?
+  rating      Float?
+  quality     Quality?
+  telegramUrl String?
+  contentType ContentType
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Category {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String?
+  contentType ContentType
+  contents    Content[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String   // In production, this should be hashed
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Quality {
+  HD
+  FULL_HD
+  FOUR_K
+  EIGHT_K
+}
+
+enum ContentType {
+  MOVIE
+  WEB_SERIES
+}
