@@ -1,12 +1,6 @@
 {
   "version": 2,
   "name": "movieflix-pro",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "env": {
     "NEXT_PUBLIC_SITE_URL": "https://movieflix-pro.vercel.app",
     "NEXT_PUBLIC_SITE_NAME": "Movieflix Pro"
