@@ -122,7 +122,7 @@ export default function MovieCard({ content, onClick }: MovieCardProps) {
           
           {/* Watch Button */}
           <motion.button
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-1 sm:py-2 px-2 sm:px-4 rounded-lg flex items-center justify-center gap-1 sm:gap-2 transition-colors text-xs sm:text-sm"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1 sm:py-2 px-2 sm:px-4 rounded-lg flex items-center justify-center gap-1 sm:gap-2 transition-colors text-xs sm:text-sm"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -146,7 +146,7 @@ export default function MovieCard({ content, onClick }: MovieCardProps) {
       
       {/* Movie Title (always visible) */}
       <div className="mt-1 sm:mt-2 px-1">
-        <h4 className="text-white font-semibold text-xs sm:text-sm line-clamp-2 group-hover:text-primary transition-colors">
+        <h4 className="text-white font-semibold text-xs sm:text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">
           {content.title}
         </h4>
         {content.category && (

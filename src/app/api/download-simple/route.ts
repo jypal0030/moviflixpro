@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       return new NextResponse(zipBuffer, {
         headers: {
           'Content-Type': 'application/zip',
-          'Content-Disposition': 'attachment; filename="movieflix-pro-website.zip"',
+          'Content-Disposition': 'attachment; filename="movieflix-pro-website-updated.zip"',
           'Content-Length': zipBuffer.length.toString(),
         },
       })
