@@ -11,45 +11,45 @@ const config: Config = {
   theme: {
         extend: {
                 colors: {
-                        background: 'oklch(0.11 0.012 264.472)',
-                        foreground: 'oklch(0.985 0 0)',
+                        background: '#111827',
+                        foreground: '#ffffff',
                         card: {
-                                DEFAULT: 'oklch(0.145 0.012 264.472)',
-                                foreground: 'oklch(0.985 0 0)'
+                                DEFAULT: '#1f2937',
+                                foreground: '#ffffff'
                         },
                         popover: {
-                                DEFAULT: 'oklch(0.145 0.012 264.472)',
-                                foreground: 'oklch(0.985 0 0)'
+                                DEFAULT: '#1f2937',
+                                foreground: '#ffffff'
                         },
                         primary: {
-                                DEFAULT: 'oklch(0.627 0.265 303.9)',
-                                foreground: 'oklch(0.985 0 0)'
+                                DEFAULT: '#3b82f6',
+                                foreground: '#ffffff'
                         },
                         secondary: {
-                                DEFAULT: 'oklch(0.269 0.012 264.472)',
-                                foreground: 'oklch(0.985 0 0)'
+                                DEFAULT: '#374151',
+                                foreground: '#ffffff'
                         },
                         muted: {
-                                DEFAULT: 'oklch(0.145 0.012 264.472)',
-                                foreground: 'oklch(0.708 0 0)'
+                                DEFAULT: '#1f2937',
+                                foreground: '#9ca3af'
                         },
                         accent: {
-                                DEFAULT: 'oklch(0.269 0.012 264.472)',
-                                foreground: 'oklch(0.985 0 0)'
+                                DEFAULT: '#374151',
+                                foreground: '#ffffff'
                         },
                         destructive: {
-                                DEFAULT: 'oklch(0.704 0.191 22.216)',
-                                foreground: 'oklch(0.985 0 0)'
+                                DEFAULT: '#ef4444',
+                                foreground: '#ffffff'
                         },
-                        border: 'oklch(1 0 0 / 10%)',
-                        input: 'oklch(1 0 0 / 15%)',
-                        ring: 'oklch(0.627 0.265 303.9)',
+                        border: '#374151',
+                        input: '#374151',
+                        ring: '#3b82f6',
                         chart: {
-                                '1': 'oklch(0.488 0.243 264.376)',
-                                '2': 'oklch(0.696 0.17 162.48)',
-                                '3': 'oklch(0.769 0.188 70.08)',
-                                '4': 'oklch(0.627 0.265 303.9)',
-                                '5': 'oklch(0.645 0.246 16.439)'
+                                '1': '#3b82f6',
+                                '2': '#10b981',
+                                '3': '#f59e0b',
+                                '4': '#ef4444',
+                                '5': '#8b5cf6'
                         }
                 },
                 borderRadius: {
