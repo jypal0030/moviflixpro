@@ -54,6 +54,7 @@
     "@types/archiver": "^6.0.3",
     "@types/jszip": "^3.4.0",
     "archiver": "^7.0.1",
+    "autoprefixer": "^10.4.21",
     "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -69,6 +70,7 @@
     "next-auth": "^4.24.11",
     "next-intl": "^4.3.4",
     "next-themes": "^0.4.6",
+    "postcss": "^8.5.6",
     "prisma": "^6.11.1",
     "react": "^19.0.0",
     "react-day-picker": "^9.8.0",
@@ -93,14 +95,13 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
     "nodemon": "^3.1.10",
-    "tailwindcss": "^4",
+    "tailwindcss": "^3.4.17",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
   }
