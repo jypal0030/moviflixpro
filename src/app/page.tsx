@@ -114,8 +114,8 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -126,7 +126,7 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-white/20 p-2 sm:p-4 shadow-lg" style={{ background: 'linear-gradient(135deg,#00b4db 0%,#0083b0 100%)' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-4">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white font-heading tracking-wide">Movieflix Pro</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white font-sans tracking-wide">Movieflix Pro</h1>
           </div>
           
           <div className="flex items-center space-x-2 sm:space-x-4">
@@ -178,7 +178,7 @@ export default function Home() {
           <div className="space-y-1">
             {/* Featured Movies */}
             <section className="py-1">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display text-white mb-2 sm:mb-4 drop-shadow-lg tracking-wide">Featured Movies</h2>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-sans text-white mb-2 sm:mb-4 drop-shadow-lg tracking-wide">Featured Movies</h2>
               <HorizontalScroll>
                 {movies.slice(0, 10).map((content) => (
                   <MovieCard
@@ -207,7 +207,7 @@ export default function Home() {
           <div className="space-y-1">
             {/* Featured Web Series */}
             <section className="py-1">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display text-white mb-2 sm:mb-4 drop-shadow-lg tracking-wide">Featured Web Series</h2>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-sans text-white mb-2 sm:mb-4 drop-shadow-lg tracking-wide">Featured Web Series</h2>
               <HorizontalScroll>
                 {webSeries.slice(0, 10).map((content) => (
                   <MovieCard
@@ -247,7 +247,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
             {/* Brand Section */}
             <div className="space-y-3 sm:space-y-4">
-              <h3 className="text-2xl sm:text-3xl md:text-4xl font-heading text-white tracking-wide">Movieflix Pro</h3>
+              <h3 className="text-2xl sm:text-3xl md:text-4xl font-sans text-white tracking-wide">Movieflix Pro</h3>
               <p className="text-gray-100 leading-relaxed text-sm sm:text-base">
                 Your ultimate streaming destination for premium movies and web series. 
                 Experience entertainment like never before.
@@ -278,7 +278,7 @@ export default function Home() {
 
             {/* Browse Section */}
             <div className="space-y-3 sm:space-y-4">
-              <h4 className="text-lg sm:text-xl font-condensed text-white tracking-wide">Browse</h4>
+              <h4 className="text-lg sm:text-xl font-sans text-white tracking-wide">Browse</h4>
               <ul className="space-y-1 sm:space-y-2">
                 <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Movies</a></li>
                 <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Web Series</a></li>
@@ -290,7 +290,7 @@ export default function Home() {
 
             {/* Support Section */}
             <div className="space-y-3 sm:space-y-4">
-              <h4 className="text-lg sm:text-xl font-condensed text-white tracking-wide">Support</h4>
+              <h4 className="text-lg sm:text-xl font-sans text-white tracking-wide">Support</h4>
               <ul className="space-y-1 sm:space-y-2">
                 <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Help Center</a></li>
                 <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Contact Us</a></li>
@@ -302,7 +302,7 @@ export default function Home() {
 
             {/* Account Section */}
             <div className="space-y-3 sm:space-y-4">
-              <h4 className="text-lg sm:text-xl font-condensed text-white tracking-wide">Account</h4>
+              <h4 className="text-lg sm:text-xl font-sans text-white tracking-wide">Account</h4>
               <ul className="space-y-1 sm:space-y-2">
                 <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">My Profile</a></li>
                 <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Watchlist</a></li>
