@@ -70,44 +70,44 @@ export default function MovieCard({ content, onClick }: MovieCardProps) {
       onClick={handleCardClick}
     >
       {/* Movie Poster */}
-      <div className="relative w-48 h-72 md:w-56 md:h-84 overflow-hidden rounded-lg shadow-lg">
+      <div className="relative w-32 h-48 sm:w-40 sm:h-60 md:w-48 md:h-72 lg:w-56 lg:h-84 overflow-hidden rounded-lg shadow-lg">
         <Image
           src={getImageSrc()}
           alt={content.title}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-110"
-          sizes="(max-width: 768px) 192px, 224px"
+          sizes="(max-width: 640px) 128px, (max-width: 768px) 160px, (max-width: 1024px) 192px, 224px"
           onError={() => setImageError(true)}
           unoptimized={content.posterUrl?.startsWith('http')}
         />
         
         {/* Hover Overlay */}
         <motion.div
-          className="absolute inset-0 bg-black/80 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          className="absolute inset-0 bg-black/80 flex flex-col justify-end p-2 sm:p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           initial={false}
           animate={{ opacity: isHovered ? 1 : 0 }}
         >
-          <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">
+          <h3 className="text-white font-bold text-sm sm:text-lg mb-1 sm:mb-2 line-clamp-2">
             {content.title}
           </h3>
           
           {/* Movie Info */}
-          <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-300 mb-2 sm:mb-3">
             {content.year && (
               <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
+                <Calendar className="h-2 w-2 sm:h-3 sm:w-3" />
                 <span>{content.year}</span>
               </div>
             )}
             {content.duration && (
               <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+                <Clock className="h-2 w-2 sm:h-3 sm:w-3" />
                 <span>{content.duration}</span>
               </div>
             )}
             {content.rating && (
               <div className="flex items-center gap-1">
-                <Star className="h-3 w-3 text-yellow-500" />
+                <Star className="h-2 w-2 sm:h-3 sm:w-3 text-yellow-500" />
                 <span>{content.rating}</span>
               </div>
             )}
@@ -115,42 +115,42 @@ export default function MovieCard({ content, onClick }: MovieCardProps) {
           
           {/* Description */}
           {content.description && (
-            <p className="text-gray-300 text-sm mb-3 line-clamp-3">
+            <p className="text-gray-300 text-xs mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-3">
               {content.description}
             </p>
           )}
           
           {/* Watch Button */}
           <motion.button
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-1 sm:py-2 px-2 sm:px-4 rounded-lg flex items-center justify-center gap-1 sm:gap-2 transition-colors text-xs sm:text-sm"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Play className="h-4 w-4" />
+            <Play className="h-3 w-3 sm:h-4 sm:w-4" />
             Watch Now
           </motion.button>
         </motion.div>
         
         {/* Quality Badge */}
         {content.quality && (
-          <div className={`absolute top-2 right-2 ${getQualityColor(content.quality)} text-white text-xs px-2 py-1 rounded-full font-semibold z-10`}>
+          <div className={`absolute top-1 sm:top-2 right-1 sm:right-2 ${getQualityColor(content.quality)} text-white text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded-full font-semibold z-10`}>
             {content.quality}
           </div>
         )}
         
         {/* Content Type Badge */}
-        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-semibold z-10">
+        <div className="absolute top-1 sm:top-2 left-1 sm:left-2 bg-black/70 text-white text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded-full font-semibold z-10">
           {content.contentType === 'MOVIE' ? 'Movie' : 'Series'}
         </div>
       </div>
       
       {/* Movie Title (always visible) */}
-      <div className="mt-2 px-1">
-        <h4 className="text-white font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+      <div className="mt-1 sm:mt-2 px-1">
+        <h4 className="text-white font-semibold text-xs sm:text-sm line-clamp-2 group-hover:text-primary transition-colors">
           {content.title}
         </h4>
         {content.category && (
-          <p className="text-gray-400 text-xs mt-1">
+          <p className="text-gray-400 text-xs mt-0.5 sm:mt-1">
             {content.category.name}
           </p>
         )}

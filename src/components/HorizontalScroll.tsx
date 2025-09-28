@@ -92,9 +92,9 @@ export default function HorizontalScroll({ children, className = '' }: Horizonta
           variant="ghost"
           size="icon"
           onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 text-white rounded-full shadow-lg transition-all duration-200"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 text-white rounded-full shadow-lg transition-all duration-200 w-8 h-8 sm:w-10 sm:h-10"
         >
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronLeft className="h-4 w-4 sm:h-6 sm:w-6" />
         </Button>
       )}
       
@@ -103,16 +103,16 @@ export default function HorizontalScroll({ children, className = '' }: Horizonta
           variant="ghost"
           size="icon"
           onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 text-white rounded-full shadow-lg transition-all duration-200"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 text-white rounded-full shadow-lg transition-all duration-200 w-8 h-8 sm:w-10 sm:h-10"
         >
-          <ChevronRight className="h-6 w-6" />
+          <ChevronRight className="h-4 w-4 sm:h-6 sm:w-6" />
         </Button>
       )}
 
       {/* Horizontal scroll container */}
       <motion.div
         ref={scrollRef}
-        className="flex overflow-x-auto scrollbar-hide gap-4 py-4 cursor-grab active:cursor-grabbing"
+        className="flex overflow-x-auto scrollbar-hide gap-2 sm:gap-4 py-2 sm:py-4 cursor-grab active:cursor-grabbing"
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
         drag="x"

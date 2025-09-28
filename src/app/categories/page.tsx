@@ -113,9 +113,9 @@ export default function CategoriesPage() {
                     )}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-foreground">{category.name}</h2>
+                    <h2 className="text-3xl font-bold text-white">{category.name}</h2>
                     {category.description && (
-                      <p className="text-muted-foreground mt-1">{category.description}</p>
+                      <p className="text-lg text-gray-100 mt-1 leading-relaxed">{category.description}</p>
                     )}
                   </div>
                 </div>

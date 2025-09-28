@@ -328,7 +328,7 @@ export default function CategoriesPage() {
                         </span>
                       </div>
                       {category.description && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-white mt-1">
                           {category.description}
                         </p>
                       )}

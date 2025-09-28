@@ -168,13 +168,13 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" onClick={closeSearch}>
       <div 
         ref={searchContainerRef}
-        className="absolute top-20 left-1/2 transform -translate-x-1/2 w-full max-w-2xl px-4"
+        className="absolute top-16 sm:top-20 left-1/2 transform -translate-x-1/2 w-full max-w-xl sm:max-w-2xl px-2 sm:px-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input */}
-        <div className="bg-white rounded-lg shadow-2xl p-4">
+        <div className="bg-white rounded-lg shadow-2xl p-3 sm:p-4">
           <form onSubmit={handleSearchSubmit} className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
             <Input
               ref={searchInputRef}
               type="text"
@@ -182,7 +182,7 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
               onChange={handleSearchInputChange}
               onFocus={handleSearchInputFocus}
               placeholder="Search movies by title..."
-              className="pl-12 pr-12 py-4 text-lg border-gray-300 text-gray-800 focus:border-blue-500 focus:ring-blue-500"
+              className="pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 text-base sm:text-lg border-gray-300 text-gray-800 focus:border-blue-500 focus:ring-blue-500"
               autoFocus
             />
             <Button
@@ -190,9 +190,9 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
               variant="ghost"
               size="icon"
               onClick={closeSearch}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </form>
         </div>
@@ -201,15 +201,15 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
         {isCategoryListOpen && (
           <div className="mt-2 bg-white rounded-lg shadow-2xl max-h-96 overflow-hidden">
             {/* Content Type Selection */}
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Select Content Type</h3>
+            <div className="p-3 sm:p-4 border-b border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Select Content Type</h3>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   variant={selectedContentType === 'MOVIE' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => handleContentTypeSelect('MOVIE')}
-                  className={selectedContentType === 'MOVIE' ? 'bg-blue-600 text-white' : 'border-gray-300 text-gray-700'}
+                  className={selectedContentType === 'MOVIE' ? 'bg-blue-600 text-white' : 'border-gray-300 text-gray-700 text-xs sm:text-sm'}
                 >
                   Movies
                 </Button>
@@ -218,7 +218,7 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
                   variant={selectedContentType === 'WEB_SERIES' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => handleContentTypeSelect('WEB_SERIES')}
-                  className={selectedContentType === 'WEB_SERIES' ? 'bg-blue-600 text-white' : 'border-gray-300 text-gray-700'}
+                  className={selectedContentType === 'WEB_SERIES' ? 'bg-blue-600 text-white' : 'border-gray-300 text-gray-700 text-xs sm:text-sm'}
                 >
                   Web Series
                 </Button>
@@ -227,11 +227,11 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
 
             {/* Categories Grid */}
             {selectedContentType && (
-              <div className="p-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              <div className="p-3 sm:p-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                   Select Category ({selectedContentType === 'MOVIE' ? 'Movies' : 'Web Series'})
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
                   {filteredCategories.map((category) => (
                     <Button
                       key={category.id}
@@ -239,7 +239,7 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
                       variant="outline"
                       size="sm"
                       onClick={() => handleCategorySelect(category)}
-                      className="border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-left justify-start"
+                      className="border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-left justify-start text-xs sm:text-sm"
                     >
                       {category.name}
                     </Button>
@@ -256,16 +256,16 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
 
             {/* Quick Search Option */}
             {selectedContentType && (
-              <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <div className="p-3 sm:p-4 border-t border-gray-200 bg-gray-50">
                 <Button
                   type="button"
                   variant="default"
                   size="sm"
                   onClick={() => performSearch()}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
                   disabled={!searchQuery.trim()}
                 >
-                  <Search className="h-4 w-4 mr-2" />
+                  <Search className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Search All {selectedContentType === 'MOVIE' ? 'Movies' : 'Web Series'}
                 </Button>
               </div>
@@ -276,8 +276,8 @@ export default function EnhancedSearch({ onSearch, isOpen = false, onClose, clas
         {/* Bottom indicator for category list */}
         {isCategoryListOpen && (
           <div className="flex justify-center mt-2">
-            <div className="bg-white rounded-full p-2 shadow-lg">
-              <ChevronUp className="h-4 w-4 text-gray-400" />
+            <div className="bg-white rounded-full p-1.5 sm:p-2 shadow-lg">
+              <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
             </div>
           </div>
         )}

@@ -44,16 +44,16 @@ export default function CategoryRow({ category, contents, onMovieClick }: Catego
   return (
     <div>
       {/* Category Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-0">
         <div>
-          <h2 className="text-3xl font-black text-black">{category.name}</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display text-white mb-1 sm:mb-2 drop-shadow-lg tracking-wide">{category.name}</h2>
           {category.description && (
-            <p className="text-muted-foreground mt-1">{category.description}</p>
+            <p className="text-sm sm:text-lg text-gray-100 mt-1 leading-relaxed">{category.description}</p>
           )}
         </div>
         <Button 
           variant="ghost" 
-          className="text-primary hover:text-primary/80 group"
+          className="text-white hover:text-gray-100 hover:bg-white/10 group self-start sm:self-auto"
         >
           View All
           <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -72,8 +72,8 @@ export default function CategoryRow({ category, contents, onMovieClick }: Catego
           ))}
         </HorizontalScroll>
       ) : (
-        <div className="flex items-center justify-center h-32 bg-muted/20 rounded-lg border border-dashed border-border">
-          <p className="text-muted-foreground">No content available in this category yet.</p>
+        <div className="flex items-center justify-center h-24 sm:h-32 bg-muted/20 rounded-lg border border-dashed border-border">
+          <p className="text-muted-foreground text-sm sm:text-base">No content available in this category yet.</p>
         </div>
       )}
     </div>
