@@ -121,9 +121,9 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg,#bdc3c7 0%,#2c3e50 100%)' }}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-400 to-gray-800">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-white/20 p-2 sm:p-4 shadow-lg" style={{ background: 'linear-gradient(135deg,#00b4db 0%,#0083b0 100%)' }}>
+      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-white/20 p-2 sm:p-4 shadow-lg bg-gradient-to-r from-cyan-500 to-cyan-600">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-4">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white font-sans tracking-wide">Movieflix Pro</h1>
@@ -241,7 +241,7 @@ export default function Home() {
       />
 
       {/* Professional Footer */}
-      <footer className="backdrop-blur-md border-t border-white/20 mt-12 sm:mt-20" style={{ background: 'linear-gradient(135deg,#00b4db 0%,#0083b0 100%)' }}>
+      <footer className="backdrop-blur-md border-t border-white/20 mt-12 sm:mt-20 bg-gradient-to-r from-cyan-500 to-cyan-600">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-16">
           {/* Main Footer Content */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">

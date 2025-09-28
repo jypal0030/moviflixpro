@@ -12,9 +12,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       style={
         {
-          "--normal-bg": "oklch(0.145 0.012 264.472)",
-          "--normal-text": "oklch(0.985 0 0)",
-          "--normal-border": "oklch(1 0 0 / 10%)",
+          "--normal-bg": "#1f2937",
+          "--normal-text": "#ffffff",
+          "--normal-border": "#374151",
         } as React.CSSProperties
       }
       {...props}
