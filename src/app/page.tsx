@@ -1,13 +1,14 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Search, Play, Star, Clock, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useState } from 'react';
+import { Play, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import MovieCard from '@/components/MovieCard';
+import HorizontalScroll from '@/components/HorizontalScroll';
+import CategoryRow from '@/components/CategoryRow';
+import MoviePopup from '@/components/MoviePopup';
+import EnhancedSearch from '@/components/EnhancedSearch';
+import DownloadButton from '@/components/DownloadButton';
 
 interface Content {
   id: string;
@@ -17,9 +18,10 @@ interface Content {
   year?: number;
   duration?: string;
   rating?: number;
-  quality?: 'HD' | 'FULL_HD' | 'FOUR_K' | 'EIGHT_K';
+  quality?: string;
   telegramUrl?: string;
   contentType: 'MOVIE' | 'WEB_SERIES';
+  categoryId?: string;
   category?: {
     id: string;
     name: string;
@@ -33,99 +35,58 @@ interface Category {
   slug: string;
   description?: string;
   contentType: 'MOVIE' | 'WEB_SERIES';
-  contentCount: number;
 }
 
 export default function Home() {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Content | null>(null);
-  const [movies, setMovies] = useState<Record<string, Content[]>>({});
-  const [webSeries, setWebSeries] = useState<Record<string, Content[]>>({});
-  const [categories, setCategories] = useState<Record<string, Category[]>>({});
+  const [featuredContent, setFeaturedContent] = useState<Content[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [contentByCategory, setContentByCategory] = useState<Record<string, Content[]>>({});
+  const [movies, setMovies] = useState<Content[]>([]);
+  const [webSeries, setWebSeries] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<Content[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-
-  const [allContent, setAllContent] = useState<Content[]>([]);
-
-  // Background gradients for cards
-  const cardBackgrounds = [
-    'linear-gradient(90deg,#1a2980,#26d0ce)',
-    'radial-gradient(circle,#36d1dc,#5b86e5)',
-    'linear-gradient(120deg,#cc2b5e,#753a88)',
-    'linear-gradient(120deg,#2af598,#009efd)',
-    'linear-gradient(120deg,#00c6ff,#0072ff)'
-  ];
-
-  const getRandomBackground = () => {
-    return cardBackgrounds[Math.floor(Math.random() * cardBackgrounds.length)];
-  };
+  const [activeTab, setActiveTab] = useState<'movies' | 'web-series'>('movies');
+  const [selectedContent, setSelectedContent] = useState<Content | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (searchTerm.trim()) {
-      performSearch(searchTerm);
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchTerm]);
-
-  const performSearch = (term: string) => {
-    if (!term.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    const filtered = allContent.filter(item =>
-      item.title.toLowerCase().includes(term.toLowerCase()) ||
-      item.description?.toLowerCase().includes(term.toLowerCase()) ||
-      item.category?.name.toLowerCase().includes(term.toLowerCase())
-    );
-    setSearchResults(filtered);
-  };
-
   const fetchData = async () => {
     try {
-      setLoading(true);
-      
-      // Fetch categories
-      const movieCategoriesRes = await fetch('/api/categories?type=MOVIE');
-      const movieCategories = await movieCategoriesRes.json();
-      
-      const webSeriesCategoriesRes = await fetch('/api/categories?type=WEB_SERIES');
-      const webSeriesCategories = await webSeriesCategoriesRes.json();
+      // Fetch all data in parallel for better performance
+      const [featuredResponse, moviesResponse, webSeriesResponse, categoriesResponse] = await Promise.all([
+        fetch('/api/content/featured'),
+        fetch('/api/content/movies'),
+        fetch('/api/content/tv-shows'),
+        fetch('/api/categories')
+      ]);
 
-      setCategories({
-        movies: movieCategories,
-        webSeries: webSeriesCategories,
-      });
+      const [featuredData, moviesData, webSeriesData, categoriesData] = await Promise.all([
+        featuredResponse.json(),
+        moviesResponse.json(),
+        webSeriesResponse.json(),
+        categoriesResponse.json()
+      ]);
 
-      // Fetch content for each category
-      const moviesData: Record<string, Content[]> = {};
-      const webSeriesData: Record<string, Content[]> = {};
-      const allContentArray: Content[] = [];
-
-      for (const category of movieCategories) {
-        const contentRes = await fetch(`/api/content?type=MOVIE&category=${category.id}`);
-        const content = await contentRes.json();
-        moviesData[category.name] = content;
-        allContentArray.push(...content);
-      }
-
-      for (const category of webSeriesCategories) {
-        const contentRes = await fetch(`/api/content?type=WEB_SERIES&category=${category.id}`);
-        const content = await contentRes.json();
-        webSeriesData[category.name] = content;
-        allContentArray.push(...content);
-      }
-
+      setFeaturedContent(featuredData);
       setMovies(moviesData);
       setWebSeries(webSeriesData);
-      setAllContent(allContentArray);
+      setCategories(categoriesData);
+
+      // Fetch content for each category in parallel
+      const categoryPromises = categoriesData.map(async (category: Category) => {
+        const contentResponse = await fetch(`/api/content/category/${category.slug}`);
+        const contentData = await contentResponse.json();
+        return { categoryId: category.id, content: contentData };
+      });
+
+      const categoryResults = await Promise.all(categoryPromises);
+      const contentByCategoryMap: Record<string, Content[]> = {};
+      categoryResults.forEach(({ categoryId, content }) => {
+        contentByCategoryMap[categoryId] = content;
+      });
+      setContentByCategory(contentByCategoryMap);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -133,422 +94,240 @@ export default function Home() {
     }
   };
 
-  const handleCardClick = (item: Content) => {
-    setSelectedItem(item);
-  };
-
-  const handleWatchClick = () => {
-    if (selectedItem?.telegramUrl) {
-      window.open(selectedItem.telegramUrl, "_blank");
-    } else {
-      window.open("https://t.me/yourchannel", "_blank");
+  const handleMovieClick = (telegramUrl: string) => {
+    // This function is no longer needed since MovieCard navigates to detail page
+    // But we'll keep it for backward compatibility
+    if (telegramUrl) {
+      window.open(telegramUrl, '_blank');
     }
   };
 
-  const ContentRow = ({ title, items }: { title: string; items: Content[] }) => (
-    <div className="mb-8">
-      <h2 className="text-xl font-bold mb-4 text-white">{title}</h2>
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-        {items.map((item) => (
-          <Card
-            key={item.id}
-            className="flex-shrink-0 w-[195px] cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/25 border border-gray-600"
-            style={{ background: 'linear-gradient(120deg,#cc2b5e,#753a88)' }}
-            onClick={() => handleCardClick(item)}
-          >
-            <CardContent className="p-0">
-              <div className="relative">
-                <img
-                  src={item.posterUrl || "/api/placeholder/195/256"}
-                  alt={item.title}
-                  className="w-full h-64 object-cover rounded-t-lg"
-                  style={{ width: '195px', height: '256px' }}
-                />
-                <Badge className="absolute top-2 right-2 bg-purple-600 hover:bg-purple-700">
-                  {item.quality === 'FOUR_K' ? '4K' : item.quality === 'FULL_HD' ? 'HD' : item.quality}
-                </Badge>
-              </div>
-              <div className="p-1.5 space-y-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-base text-white truncate leading-tight flex-1">{item.title}</h3>
-                  <span className="text-xs text-white ml-2">{item.year}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-white">
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-2 h-2 text-white" />
-                    <span className="text-xs">{item.duration}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="w-2 h-2 text-yellow-400 fill-current" />
-                    <span className="text-xs text-yellow-400">{item.rating}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
+  const handleContentClick = (content: Content) => {
+    setSelectedContent(content);
+    setIsPopupOpen(true);
+  };
+
+  const closePopup = () => {
+    setIsPopupOpen(false);
+    setSelectedContent(null);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'radial-gradient(circle,#eef2f3,#8e9eab)' }}>
-      {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 backdrop-blur-sm border-b border-gray-800" style={{ background: 'linear-gradient(to right,#2980b9,#6dd5fa,#ffffff)' }}>
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <Play className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-black" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
-              MoviFlixPro
-            </h1>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg,#bdc3c7 0%,#2c3e50 100%)' }}>
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-white/20 p-2 sm:p-4 shadow-lg" style={{ background: 'linear-gradient(135deg,#00b4db 0%,#0083b0 100%)' }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white font-heading tracking-wide">Movieflix Pro</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.location.href = "/admin-login"}
-              className="text-gray-800 hover:text-black hover:bg-purple-600/20 transition-all duration-300"
-            >
-              Admin
-            </Button>
-            <Button
-              variant="ghost"
+          
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <EnhancedSearch />
+            <DownloadButton />
+            <Button 
+              variant="ghost" 
               size="icon"
-              onClick={() => setSearchOpen(true)}
-              className="text-gray-800 hover:text-black hover:bg-purple-600/20 transition-all duration-300"
+              onClick={() => window.location.href = '/admin/login'}
+              className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 transition-all duration-200"
             >
-              <Search className="w-5 h-5" />
+              <Shield className="h-5 w-5 sm:h-6 sm:w-6" />
             </Button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* Main Content */}
-      <main className="pt-20 pb-8">
-        <div className="container mx-auto px-4">
-          <Tabs defaultValue="movies" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-800/50">
-              <TabsTrigger 
-                value="movies" 
-                className="data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-gray-700/50 data-[state=inactive]:to-gray-800/50 data-[state=inactive]:border-2 data-[state=inactive]:border-gray-600 data-[state=inactive]:text-gray-300 hover:bg-gray-700/70 transition-all duration-300"
-              >
-                Movies
-              </TabsTrigger>
-              <TabsTrigger 
-                value="web-series" 
-                className="data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-gray-700/50 data-[state=inactive]:to-gray-800/50 data-[state=inactive]:border-2 data-[state=inactive]:border-gray-600 data-[state=inactive]:text-gray-300 hover:bg-gray-700/70 transition-all duration-300"
-              >
-                Web Series
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="movies" className="space-y-8">
-              {Object.entries(movies).map(([categoryName, items]) => (
-                <ContentRow key={categoryName} title={categoryName} items={items} />
-              ))}
-            </TabsContent>
-
-            <TabsContent value="web-series" className="space-y-8">
-              {Object.entries(webSeries).map(([categoryName, items]) => (
-                <ContentRow key={categoryName} title={categoryName} items={items} />
-              ))}
-            </TabsContent>
-          </Tabs>
+      {/* Content Tabs */}
+      <div className="pt-16 sm:pt-20 px-2 sm:px-4">
+        <div className="max-w-7xl mx-auto flex justify-center">
+          <div className="flex space-x-1 bg-white/20 backdrop-blur-sm p-1 rounded-xl w-64 sm:w-80 shadow-lg border border-white/30">
+            <button
+              onClick={() => setActiveTab('movies')}
+              className={`flex-1 px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
+                activeTab === 'movies'
+                  ? 'bg-white text-blue-600 shadow-lg'
+                  : 'text-white hover:text-blue-100 hover:bg-white/10'
+              }`}
+            >
+              Movies
+            </button>
+            <button
+              onClick={() => setActiveTab('web-series')}
+              className={`flex-1 px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
+                activeTab === 'web-series'
+                  ? 'bg-white text-blue-600 shadow-lg'
+                  : 'text-white hover:text-blue-100 hover:bg-white/10'
+              }`}
+            >
+              Web Series
+            </button>
+          </div>
         </div>
-      </main>
+      </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 mt-16">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Logo and Description */}
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                  <Play className="w-5 h-5 text-white" />
-                </div>
-                <h2 className="text-xl font-bold text-black" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
-                  MoviFlixPro
-                </h2>
-              </div>
-              <p className="text-gray-300 mb-4">
-                Your ultimate destination for movies and web series. Stream the latest content in high quality with an extensive library of entertainment.
+      {/* Tab Content */}
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-6 sm:py-12">
+        {activeTab === 'movies' && (
+          <div className="space-y-1">
+            {/* Featured Movies */}
+            <section className="py-1">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display text-white mb-2 sm:mb-4 drop-shadow-lg tracking-wide">Featured Movies</h2>
+              <HorizontalScroll>
+                {movies.slice(0, 10).map((content) => (
+                  <MovieCard
+                    key={content.id}
+                    content={content}
+                    onClick={() => handleContentClick(content)}
+                  />
+                ))}
+              </HorizontalScroll>
+            </section>
+
+            {/* Categories */}
+            {categories.filter(cat => cat.contentType === 'MOVIE').map((category) => (
+              <section key={category.id} className="py-1">
+                <CategoryRow
+                  category={category}
+                  contents={contentByCategory[category.id] || []}
+                  onMovieClick={handleContentClick}
+                />
+              </section>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'web-series' && (
+          <div className="space-y-1">
+            {/* Featured Web Series */}
+            <section className="py-1">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display text-white mb-2 sm:mb-4 drop-shadow-lg tracking-wide">Featured Web Series</h2>
+              <HorizontalScroll>
+                {webSeries.slice(0, 10).map((content) => (
+                  <MovieCard
+                    key={content.id}
+                    content={content}
+                    onClick={() => handleContentClick(content)}
+                  />
+                ))}
+              </HorizontalScroll>
+            </section>
+
+            {/* Web Series Categories */}
+            {categories.filter(cat => cat.contentType === 'WEB_SERIES').map((category) => (
+              <section key={category.id} className="py-1">
+                <CategoryRow
+                  category={category}
+                  contents={contentByCategory[category.id] || []}
+                  onMovieClick={handleContentClick}
+                />
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Movie Popup */}
+      <MoviePopup
+        content={selectedContent}
+        isOpen={isPopupOpen}
+        onClose={closePopup}
+      />
+
+      {/* Professional Footer */}
+      <footer className="backdrop-blur-md border-t border-white/20 mt-12 sm:mt-20" style={{ background: 'linear-gradient(135deg,#00b4db 0%,#0083b0 100%)' }}>
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-16">
+          {/* Main Footer Content */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
+            {/* Brand Section */}
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-2xl sm:text-3xl md:text-4xl font-heading text-white tracking-wide">Movieflix Pro</h3>
+              <p className="text-gray-100 leading-relaxed text-sm sm:text-base">
+                Your ultimate streaming destination for premium movies and web series. 
+                Experience entertainment like never before.
               </p>
-              <div className="flex gap-4">
-                <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
-                  <span className="text-sm">f</span>
-                </div>
-                <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
-                  <span className="text-sm">t</span>
-                </div>
-                <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
-                  <span className="text-sm">in</span>
-                </div>
-                <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
-                  <span className="text-sm">ig</span>
-                </div>
+              <div className="flex space-x-3 sm:space-x-4">
+                <a href="#" className="text-gray-100 hover:text-white transition-colors">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-100 hover:text-white transition-colors">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-100 hover:text-white transition-colors">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zM5.838 12a6.162 6.162 0 1112.324 0 6.162 6.162 0 01-12.324 0zM12 16a4 4 0 110-8 4 4 0 010 8zm4.965-10.405a1.44 1.44 0 112.881.001 1.44 1.44 0 01-2.881-.001z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-100 hover:text-white transition-colors">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                </a>
               </div>
             </div>
 
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Home</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Movies</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Web Series</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white">Categories</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white">New Releases</a></li>
+            {/* Browse Section */}
+            <div className="space-y-3 sm:space-y-4">
+              <h4 className="text-lg sm:text-xl font-condensed text-white tracking-wide">Browse</h4>
+              <ul className="space-y-1 sm:space-y-2">
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Movies</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Web Series</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">New Releases</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Trending Now</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Top Rated</a></li>
               </ul>
             </div>
 
-            {/* Support */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Support</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Help Center</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Contact Us</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">FAQ</a></li>
+            {/* Support Section */}
+            <div className="space-y-3 sm:space-y-4">
+              <h4 className="text-lg sm:text-xl font-condensed text-white tracking-wide">Support</h4>
+              <ul className="space-y-1 sm:space-y-2">
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Help Center</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Contact Us</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Privacy Policy</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Terms of Service</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Cookie Policy</a></li>
+              </ul>
+            </div>
+
+            {/* Account Section */}
+            <div className="space-y-3 sm:space-y-4">
+              <h4 className="text-lg sm:text-xl font-condensed text-white tracking-wide">Account</h4>
+              <ul className="space-y-1 sm:space-y-2">
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">My Profile</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Watchlist</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Settings</a></li>
+                <li><a href="/admin/login" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Admin Panel</a></li>
+                <li><a href="#" className="text-gray-100 hover:text-white transition-colors text-sm sm:text-base">Sign Out</a></li>
               </ul>
             </div>
           </div>
 
-          {/* Bottom Section */}
-          <div className="border-t border-gray-800 mt-8 pt-6">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="text-gray-400 text-sm mb-4 md:mb-0">
-                © 2024 MoviFlixPro. All rights reserved.
-              </p>
-              <div className="flex gap-6 text-sm text-gray-400">
-                <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-                <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-                <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+          {/* Bottom Footer */}
+          <div className="border-t border-white/20 pt-6 sm:pt-8">
+            <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+              <div className="text-gray-100 text-xs sm:text-sm text-center sm:text-left">
+                © 2024 Movieflix Pro. All rights reserved.
+              </div>
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6 text-xs sm:text-sm text-center sm:text-left">
+                <a href="#" className="text-gray-100 hover:text-white transition-colors">Privacy Policy</a>
+                <a href="#" className="text-gray-100 hover:text-white transition-colors">Terms of Service</a>
+                <a href="#" className="text-gray-100 hover:text-white transition-colors">Cookie Settings</a>
               </div>
             </div>
           </div>
         </div>
       </footer>
-
-      {/* Search Overlay */}
-      {searchOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm">
-          <div className="flex items-start justify-center pt-20">
-            <div className="w-full max-w-4xl px-4">
-              {/* Search Header with Close Button */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">Search Content</h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setSearchTerm("");
-                    setSearchResults([]);
-                  }}
-                  className="border-gray-600 text-black font-bold hover:bg-gray-800 hover:text-white"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Close
-                </Button>
-              </div>
-              
-              <div className="relative mb-6">
-                <Input
-                  placeholder="Search movies and web series..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 pr-12"
-                  autoFocus
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setSearchResults([]);
-                  }}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                >
-                  <Search className="w-5 h-5" />
-                </Button>
-              </div>
-              
-              {/* Search Results */}
-              {searchTerm && (
-                <div className="bg-gray-900 rounded-lg border border-gray-700 max-h-96 overflow-y-auto">
-                  {searchResults.length > 0 ? (
-                    <div className="p-4">
-                      <h3 className="text-white font-semibold mb-4">
-                        Search Results ({searchResults.length})
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {searchResults.map((item) => (
-                          <div
-                            key={item.id}
-                            className="cursor-pointer transition-all duration-300 hover:scale-105"
-                            onClick={() => {
-                              handleCardClick(item);
-                              setSearchOpen(false);
-                              setSearchTerm("");
-                              setSearchResults([]);
-                            }}
-                          >
-                            <div className="rounded-lg border border-gray-600 p-2" style={{ background: 'linear-gradient(120deg,#cc2b5e,#753a88)' }}>
-                              <div className="relative">
-                                <img
-                                  src={item.posterUrl || "/api/placeholder/195/256"}
-                                  alt={item.title}
-                                  className="w-full h-32 object-cover rounded-lg border border-gray-600"
-                                  style={{ width: '100%', height: '128px' }}
-                                />
-                                <Badge className="absolute top-1 right-1 bg-purple-600 text-xs">
-                                  {item.quality === 'FOUR_K' ? '4K' : item.quality === 'FULL_HD' ? 'HD' : item.quality}
-                                </Badge>
-                              </div>
-                              <div className="mt-2">
-                                <h4 className="text-white text-sm font-medium truncate">
-                                  {item.title}
-                                </h4>
-                                <p className="text-white text-xs">
-                                  {item.year} • {item.contentType === 'MOVIE' ? 'Movie' : 'Series'}
-                                </p>
-                                <div className="flex items-center gap-1 mt-1">
-                                  <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                  <span className="text-xs text-yellow-400">{item.rating}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-8 text-center">
-                      <Search className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                      <p className="text-gray-400">
-                        {searchTerm.length > 0 
-                          ? `No results found for "${searchTerm}"`
-                          : "Start typing to search..."
-                        }
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {/* Quick filters (only show when not searching) */}
-              {!searchTerm && (
-                <div className="mt-4 space-y-2">
-                  <p className="text-gray-400 text-sm">Quick filters:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {categories.movies?.map((category) => (
-                      <Badge 
-                        key={category.id} 
-                        variant="outline" 
-                        className="border-gray-600 text-gray-300 hover:bg-purple-600 hover:text-white cursor-pointer"
-                        onClick={() => setSearchTerm(category.name)}
-                      >
-                        {category.name}
-                      </Badge>
-                    ))}
-                    {categories.webSeries?.map((category) => (
-                      <Badge 
-                        key={category.id} 
-                        variant="outline" 
-                        className="border-gray-600 text-gray-300 hover:bg-purple-600 hover:text-white cursor-pointer"
-                        onClick={() => setSearchTerm(category.name)}
-                      >
-                        {category.name}
-                      </Badge>
-                    ))}
-                    <Badge variant="outline" className="border-gray-600 text-gray-300 hover:bg-purple-600 hover:text-white cursor-pointer"
-                      onClick={() => setSearchTerm("2024")}>
-                      2024
-                    </Badge>
-                    <Badge variant="outline" className="border-gray-600 text-gray-300 hover:bg-purple-600 hover:text-white cursor-pointer"
-                      onClick={() => setSearchTerm("4K")}>
-                      4K
-                    </Badge>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Movie/Series Details Modal */}
-      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
-        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">{selectedItem?.title}</DialogTitle>
-          </DialogHeader>
-          {selectedItem && (
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <img
-                  src={selectedItem.posterUrl || "/api/placeholder/300/400"}
-                  alt={selectedItem.title}
-                  className="w-32 h-44 object-cover rounded-lg"
-                />
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-4 text-sm">
-                    <span>{selectedItem.year}</span>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{selectedItem.duration}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="text-yellow-400">{selectedItem.rating}</span>
-                    </div>
-                  </div>
-                  <Badge className="bg-purple-600">
-                    {selectedItem.quality === 'FOUR_K' ? '4K' : selectedItem.quality === 'FULL_HD' ? 'HD' : selectedItem.quality}
-                  </Badge>
-                  {selectedItem.description && (
-                    <p className="text-gray-300 text-sm">
-                      {selectedItem.description}
-                    </p>
-                  )}
-                  <p className="text-gray-300 text-sm">
-                    Experience this amazing {selectedItem.duration?.includes('Season') ? 'series' : 'movie'} in stunning {selectedItem.quality} quality. 
-                    Click below to watch now on our Telegram channel.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  onClick={handleWatchClick}
-                  className="bg-purple-600 hover:bg-purple-700 flex-1"
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Watch Now
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleWatchClick}
-                  className="border-gray-600 text-white hover:bg-gray-800 flex-1"
-                >
-                  Download
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

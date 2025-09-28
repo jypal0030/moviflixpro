@@ -1,595 +1,182 @@
-import { db } from '../src/lib/db';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 async function main() {
-  // Create categories for movies
-  const movieCategories = await Promise.all([
-    db.category.create({
+  console.log('Seeding database...');
+
+  // Create admin user
+  const adminUser = await prisma.adminUser.create({
+    data: {
+      username: 'admin',
+      email: 'admin@movieflix.com',
+      password: 'admin123', // In production, use hashed passwords
+      role: 'admin'
+    }
+  });
+
+  console.log('Admin user created:', adminUser.username);
+
+  // Create categories
+  const categories = await Promise.all([
+    prisma.category.create({
       data: {
         name: 'Hollywood',
         slug: 'hollywood',
-        description: 'Hollywood movies',
-        contentType: 'MOVIE',
-      },
+        description: 'Latest Hollywood movies and blockbusters',
+        contentType: 'MOVIE'
+      }
     }),
-    db.category.create({
+    prisma.category.create({
       data: {
         name: 'Bollywood',
         slug: 'bollywood',
-        description: 'Bollywood movies',
-        contentType: 'MOVIE',
-      },
+        description: 'Bollywood movies and Indian cinema',
+        contentType: 'MOVIE'
+      }
     }),
-    db.category.create({
+    prisma.category.create({
       data: {
-        name: 'South Movies',
-        slug: 'south-movies',
-        description: 'South Indian movies',
-        contentType: 'MOVIE',
-      },
+        name: 'South Indian',
+        slug: 'south-indian',
+        description: 'South Indian movies in Tamil, Telugu, Malayalam, and Kannada',
+        contentType: 'MOVIE'
+      }
     }),
-    db.category.create({
+    prisma.category.create({
       data: {
-        name: 'Marvels',
-        slug: 'marvels',
-        description: 'Marvel superhero movies',
-        contentType: 'MOVIE',
-      },
+        name: 'Marvel',
+        slug: 'marvel',
+        description: 'Marvel Cinematic Universe movies and series',
+        contentType: 'MOVIE'
+      }
     }),
+    prisma.category.create({
+      data: {
+        name: 'Web Series',
+        slug: 'web-series',
+        description: 'Popular web series from around the world',
+        contentType: 'WEB_SERIES'
+      }
+    }),
+    prisma.category.create({
+      data: {
+        name: 'Action',
+        slug: 'action',
+        description: 'High-octane action movies',
+        contentType: 'MOVIE'
+      }
+    })
   ]);
 
-  // Create categories for web series
-  const webSeriesCategories = await Promise.all([
-    db.category.create({
-      data: {
-        name: 'Popular',
-        slug: 'popular',
-        description: 'Popular web series',
-        contentType: 'WEB_SERIES',
-      },
-    }),
-    db.category.create({
-      data: {
-        name: 'Trending',
-        slug: 'trending',
-        description: 'Trending web series',
-        contentType: 'WEB_SERIES',
-      },
-    }),
-    db.category.create({
-      data: {
-        name: 'Originals',
-        slug: 'originals',
-        description: 'Original web series',
-        contentType: 'WEB_SERIES',
-      },
-    }),
-    db.category.create({
-      data: {
-        name: 'Anime',
-        slug: 'anime',
-        description: 'Anime series',
-        contentType: 'WEB_SERIES',
-      },
-    }),
-  ]);
+  console.log('Categories created:', categories.length);
 
-  // Create movie content
-  const movies = [
+  // Create sample content
+  const sampleContent = [
     {
       title: 'Inception',
-      description: 'A mind-bending thriller about dream infiltration.',
+      description: 'A mind-bending thriller about dream infiltration and the power of the subconscious mind.',
+      posterUrl: 'https://images.unsplash.com/photo-1489599904447-b47de73b2377?w=300&h=450&fit=crop',
       year: 2010,
       duration: '2h 28m',
       rating: 8.8,
       quality: 'FOUR_K',
-      categoryId: movieCategories[0].id,
+      telegramUrl: 'https://t.me/moviflixpro/inception',
+      contentType: 'MOVIE' as const,
+      categoryId: categories[0].id // Hollywood
     },
     {
       title: 'The Dark Knight',
-      description: 'Batman faces the Joker in this epic superhero film.',
+      description: 'Batman faces the Joker in this epic superhero thriller that redefined the genre.',
+      posterUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300&h=450&fit=crop',
       year: 2008,
       duration: '2h 32m',
       rating: 9.0,
       quality: 'FOUR_K',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: 'Interstellar',
-      description: 'A journey through space and time to save humanity.',
-      year: 2014,
-      duration: '2h 49m',
-      rating: 8.6,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: 'Pulp Fiction',
-      description: 'Interconnected stories of crime in Los Angeles.',
-      year: 1994,
-      duration: '2h 34m',
-      rating: 8.9,
-      quality: 'FULL_HD',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: 'The Matrix',
-      description: 'A computer hacker discovers the truth about reality.',
-      year: 1999,
-      duration: '2h 16m',
-      rating: 8.7,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: 'Forrest Gump',
-      description: 'The extraordinary life of a simple man.',
-      year: 1994,
-      duration: '2h 22m',
-      rating: 8.8,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: 'The Godfather',
-      description: 'The aging patriarch of a crime dynasty transfers control.',
-      year: 1972,
-      duration: '2h 55m',
-      rating: 9.2,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: 'Fight Club',
-      description: 'An insomniac office worker and a soap maker form an underground fight club.',
-      year: 1999,
-      duration: '2h 19m',
-      rating: 8.8,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: 'The Shawshank Redemption',
-      description: 'Two imprisoned men bond over a number of years.',
-      year: 1994,
-      duration: '2h 22m',
-      rating: 9.3,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: 'Goodfellas',
-      description: 'The story of Henry Hill and his life in the mob.',
-      year: 1990,
-      duration: '2h 26m',
-      rating: 8.7,
-      quality: 'FULL_HD',
-      categoryId: movieCategories[0].id,
-    },
-    {
-      title: '3 Idiots',
-      description: 'A comedy-drama about friendship and education.',
-      year: 2009,
-      duration: '2h 50m',
-      rating: 8.4,
-      quality: 'FULL_HD',
-      categoryId: movieCategories[1].id,
-    },
-    {
-      title: 'Dangal',
-      description: 'A inspiring story of a wrestler and his daughters.',
-      year: 2016,
-      duration: '2h 29m',
-      rating: 8.3,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[1].id,
-    },
-    {
-      title: 'PK',
-      description: 'An alien on Earth loses his remote to go home.',
-      year: 2014,
-      duration: '2h 33m',
-      rating: 8.1,
-      quality: 'FULL_HD',
-      categoryId: movieCategories[1].id,
-    },
-    {
-      title: 'Sanju',
-      description: 'The life of actor Sanjay Dutt.',
-      year: 2018,
-      duration: '2h 35m',
-      rating: 7.8,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[1].id,
-    },
-    {
-      title: 'Lagaan',
-      description: 'Villagers challenge British officers to a cricket match.',
-      year: 2001,
-      duration: '3h 44m',
-      rating: 8.1,
-      quality: 'FULL_HD',
-      categoryId: movieCategories[1].id,
-    },
-    {
-      title: 'Gangs of Wasseypur',
-      description: 'A crime saga spanning three generations.',
-      year: 2012,
-      duration: '5h 21m',
-      rating: 8.2,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[1].id,
-    },
-    {
-      title: 'Baahubali 2',
-      description: 'The conclusion to the epic Baahubali saga.',
-      year: 2017,
-      duration: '2h 47m',
-      rating: 8.2,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[2].id,
-    },
-    {
-      title: 'KGF',
-      description: 'An action-packed story of a gold mine.',
-      year: 2018,
-      duration: '2h 35m',
-      rating: 8.2,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[2].id,
-    },
-    {
-      title: 'RRR',
-      description: 'A fictional story about two Indian revolutionaries.',
-      year: 2022,
-      duration: '3h 7m',
-      rating: 8.0,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[2].id,
-    },
-    {
-      title: 'Pushpa',
-      description: 'A laborer rises in the red sandalwood smuggling world.',
-      year: 2021,
-      duration: '2h 59m',
-      rating: 7.6,
-      quality: 'FULL_HD',
-      categoryId: movieCategories[2].id,
-    },
-    {
-      title: 'Vikram',
-      description: 'A black ops squad goes after a masked serial killer.',
-      year: 2022,
-      duration: '3h 7m',
-      rating: 8.3,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[2].id,
-    },
-    {
-      title: 'Kantara',
-      description: 'A village guardian and a forest officer clash.',
-      year: 2022,
-      duration: '2h 28m',
-      rating: 8.4,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[2].id,
+      telegramUrl: 'https://t.me/moviflixpro/darkknight',
+      contentType: 'MOVIE' as const,
+      categoryId: categories[0].id // Hollywood
     },
     {
       title: 'Avengers: Endgame',
-      description: 'The epic conclusion to the Infinity Saga.',
+      description: 'The epic conclusion to the Infinity Saga, bringing together all Marvel heroes.',
+      posterUrl: 'https://images.unsplash.com/photo-1535016120720-40c646be5580?w=300&h=450&fit=crop',
       year: 2019,
       duration: '3h 1m',
       rating: 8.4,
       quality: 'FOUR_K',
-      categoryId: movieCategories[3].id,
+      telegramUrl: 'https://t.me/moviflixpro/endgame',
+      contentType: 'MOVIE' as const,
+      categoryId: categories[3].id // Marvel
     },
     {
-      title: 'Spider-Man: No Way Home',
-      description: 'Spider-Man faces the multiverse.',
-      year: 2021,
-      duration: '2h 28m',
-      rating: 8.4,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[3].id,
-    },
-    {
-      title: 'Black Panther',
-      description: 'T\'Challa returns to Wakanda to become king.',
-      year: 2018,
-      duration: '2h 14m',
-      rating: 7.3,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[3].id,
-    },
-    {
-      title: 'Thor: Ragnarok',
-      description: 'Thor must escape the alien planet Sakaar.',
-      year: 2017,
-      duration: '2h 10m',
-      rating: 7.9,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[3].id,
-    },
-    {
-      title: 'Iron Man',
-      description: 'A billionaire inventor creates a powered suit of armor.',
-      year: 2008,
-      duration: '2h 6m',
-      rating: 7.9,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[3].id,
-    },
-    {
-      title: 'Captain America: Civil War',
-      description: 'Political interference causes a rift between the Avengers.',
+      title: 'Dangal',
+      description: 'Based on the true story of Mahavir Singh Phogat and his daughters who became wrestling champions.',
+      posterUrl: 'https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=300&h=450&fit=crop',
       year: 2016,
-      duration: '2h 28m',
-      rating: 7.8,
-      quality: 'FOUR_K',
-      categoryId: movieCategories[3].id,
+      duration: '2h 49m',
+      rating: 8.4,
+      quality: 'FULL_HD',
+      telegramUrl: 'https://t.me/moviflixpro/dangal',
+      contentType: 'MOVIE' as const,
+      categoryId: categories[1].id // Bollywood
     },
-  ];
-
-  // Create web series content
-  const webSeries = [
+    {
+      title: 'Baahubali 2',
+      description: 'The conclusion to the epic Indian fantasy action film.',
+      posterUrl: 'https://images.unsplash.com/photo-1489599904447-b47de73b2377?w=300&h=450&fit=crop',
+      year: 2017,
+      duration: '2h 47m',
+      rating: 8.2,
+      quality: 'FOUR_K',
+      telegramUrl: 'https://t.me/moviflixpro/baahubali2',
+      contentType: 'MOVIE' as const,
+      categoryId: categories[2].id // South Indian
+    },
     {
       title: 'Stranger Things',
-      description: 'Kids face supernatural forces in a small town.',
+      description: 'Kids in a small town face supernatural forces in this thrilling Netflix series.',
+      posterUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300&h=450&fit=crop',
       year: 2016,
       duration: '4 Seasons',
       rating: 8.7,
       quality: 'FOUR_K',
-      categoryId: webSeriesCategories[0].id,
+      telegramUrl: 'https://t.me/moviflixpro/strangerthings',
+      contentType: 'WEB_SERIES' as const,
+      categoryId: categories[4].id // Web Series
     },
     {
-      title: 'The Crown',
-      description: 'The reign of Queen Elizabeth II.',
-      year: 2016,
-      duration: '6 Seasons',
-      rating: 8.6,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[0].id,
-    },
-    {
-      title: 'Money Heist',
-      description: 'The Professor plans the biggest heist in history.',
-      year: 2017,
-      duration: '5 Seasons',
-      rating: 8.2,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[0].id,
-    },
-    {
-      title: 'Breaking Bad',
-      description: 'A chemistry teacher turns to cooking meth.',
-      year: 2008,
-      duration: '5 Seasons',
-      rating: 9.5,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[0].id,
-    },
-    {
-      title: 'Game of Thrones',
-      description: 'Nine noble families fight for control of Westeros.',
-      year: 2011,
-      duration: '8 Seasons',
-      rating: 9.2,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[0].id,
-    },
-    {
-      title: 'The Office',
-      description: 'A mockumentary about office employees.',
-      year: 2005,
-      duration: '9 Seasons',
-      rating: 8.9,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[0].id,
-    },
-    {
-      title: 'Friends',
-      description: 'Six friends living in New York City.',
-      year: 1994,
-      duration: '10 Seasons',
-      rating: 8.9,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[0].id,
-    },
-    {
-      title: 'Squid Game',
-      description: 'A deadly survival game with a massive prize.',
-      year: 2021,
-      duration: '1 Season',
-      rating: 8.0,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[1].id,
-    },
-    {
-      title: 'The Witcher',
-      description: 'A monster hunter in a fantasy world.',
-      year: 2019,
-      duration: '3 Seasons',
-      rating: 8.0,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[1].id,
-    },
-    {
-      title: 'Wednesday',
-      description: 'Wednesday Addams investigates supernatural murders.',
-      year: 2022,
-      duration: '1 Season',
-      rating: 8.2,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[1].id,
-    },
-    {
-      title: 'House of the Dragon',
-      description: 'The story of House Targaryen 200 years before Game of Thrones.',
-      year: 2022,
-      duration: '1 Season',
-      rating: 8.5,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[1].id,
-    },
-    {
-      title: 'The Last of Us',
-      description: 'A smuggler escorts a teenager across a post-apocalyptic US.',
+      title: 'John Wick 4',
+      description: 'John Wick uncovers a path to defeating the High Table. But before he can earn his freedom, Wick must face off against a new enemy.',
+      posterUrl: 'https://images.unsplash.com/photo-1489599904447-b47de73b2377?w=300&h=450&fit=crop',
       year: 2023,
-      duration: '1 Season',
-      rating: 8.8,
+      duration: '2h 49m',
+      rating: 7.8,
       quality: 'FOUR_K',
-      categoryId: webSeriesCategories[1].id,
+      telegramUrl: 'https://t.me/moviflixpro/johnwick4',
+      contentType: 'MOVIE' as const,
+      categoryId: categories[5].id // Action
     },
     {
-      title: 'Ted Lasso',
-      description: 'An American football coach moves to England to manage a soccer team.',
-      year: 2020,
-      duration: '3 Seasons',
-      rating: 8.8,
+      title: 'RRR',
+      description: 'A fictional story about two legendary revolutionaries and their journey away from home before they started fighting for their country.',
+      posterUrl: 'https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=300&h=450&fit=crop',
+      year: 2022,
+      duration: '3h 7m',
+      rating: 8.0,
       quality: 'FOUR_K',
-      categoryId: webSeriesCategories[1].id,
-    },
-    {
-      title: 'Sacred Games',
-      description: 'A crime thriller set in Mumbai.',
-      year: 2018,
-      duration: '2 Seasons',
-      rating: 8.5,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[2].id,
-    },
-    {
-      title: 'Mirzapur',
-      description: 'A crime drama in the heartland of India.',
-      year: 2018,
-      duration: '3 Seasons',
-      rating: 8.4,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[2].id,
-    },
-    {
-      title: 'The Family Man',
-      description: 'A middle-class man works for a special cell of the NIA.',
-      year: 2019,
-      duration: '2 Seasons',
-      rating: 8.5,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[2].id,
-    },
-    {
-      title: 'Scam 1992',
-      description: 'The story of stockbroker Harshad Mehta.',
-      year: 2020,
-      duration: '1 Season',
-      rating: 9.3,
-      quality: 'FULL_HD',
-      categoryId: webSeriesCategories[2].id,
-    },
-    {
-      title: 'Paatal Lok',
-      description: 'A down-on-his-luck cop lands the case of a lifetime.',
-      year: 2020,
-      duration: '1 Season',
-      rating: 8.1,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[2].id,
-    },
-    {
-      title: 'Aspirants',
-      description: 'The lives of UPSC aspirants in Delhi.',
-      year: 2021,
-      duration: '1 Season',
-      rating: 9.0,
-      quality: 'FULL_HD',
-      categoryId: webSeriesCategories[2].id,
-    },
-    {
-      title: 'Demon Slayer',
-      description: 'A boy becomes a demon slayer to save his sister.',
-      year: 2019,
-      duration: '3 Seasons',
-      rating: 8.7,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[3].id,
-    },
-    {
-      title: 'Attack on Titan',
-      description: 'Humanity fights giant humanoid Titans.',
-      year: 2013,
-      duration: '4 Seasons',
-      rating: 9.0,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[3].id,
-    },
-    {
-      title: 'Jujutsu Kaisen',
-      description: 'A boy swallows a talisman and becomes a sorcerer.',
-      year: 2020,
-      duration: '2 Seasons',
-      rating: 8.5,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[3].id,
-    },
-    {
-      title: 'One Piece',
-      description: 'A young pirate sets out to become the Pirate King.',
-      year: 1999,
-      duration: 'Ongoing',
-      rating: 8.9,
-      quality: 'FULL_HD',
-      categoryId: webSeriesCategories[3].id,
-    },
-    {
-      title: 'Naruto',
-      description: 'A young ninja seeks recognition from his peers.',
-      year: 2002,
-      duration: '9 Seasons',
-      rating: 8.4,
-      quality: 'FULL_HD',
-      categoryId: webSeriesCategories[3].id,
-    },
-    {
-      title: 'Death Note',
-      description: 'A high school student discovers a supernatural notebook.',
-      year: 2006,
-      duration: '1 Season',
-      rating: 9.0,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[3].id,
-    },
-    {
-      title: 'My Hero Academia',
-      description: 'A boy without powers in a super-powered world.',
-      year: 2016,
-      duration: '6 Seasons',
-      rating: 8.4,
-      quality: 'FOUR_K',
-      categoryId: webSeriesCategories[3].id,
-    },
+      telegramUrl: 'https://t.me/moviflixpro/rrr',
+      contentType: 'MOVIE' as const,
+      categoryId: categories[2].id // South Indian
+    }
   ];
 
-  // Insert all content
-  await Promise.all([
-    ...movies.map(movie => 
-      db.content.create({
-        data: {
-          ...movie,
-          contentType: 'MOVIE',
-          telegramUrl: 'https://t.me/yourchannel',
-        },
-      })
-    ),
-    ...webSeries.map(series => 
-      db.content.create({
-        data: {
-          ...series,
-          contentType: 'WEB_SERIES',
-          telegramUrl: 'https://t.me/yourchannel',
-        },
-      })
-    ),
-  ]);
+  const content = await Promise.all(
+    sampleContent.map(item => prisma.content.create({ data: item }))
+  );
 
-  console.log(`Database seeded successfully with ${movies.length} movies and ${webSeries.length} web series!`);
+  console.log('Sample content created:', content.length);
+  console.log('Database seeded successfully!');
 }
 
 main()
@@ -598,5 +185,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await db.$disconnect();
+    await prisma.$disconnect();
   });

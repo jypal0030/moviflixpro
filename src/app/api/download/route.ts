@@ -1,56 +1,110 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
+import { NextRequest, NextResponse } from 'next/server'
+import JSZip from 'jszip'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const file = searchParams.get('file');
-    
-    if (!file) {
-      return NextResponse.json({ error: 'File parameter is required' }, { status: 400 });
+    const zip = new JSZip()
+    const projectRoot = process.cwd()
+
+    // Function to recursively add files and directories to zip
+    const addFilesToZip = async (dirPath: string, zipPath: string) => {
+      try {
+        const items = await fs.readdir(dirPath, { withFileTypes: true })
+        
+        for (const item of items) {
+          const fullPath = path.join(dirPath, item.name)
+          const relativePath = path.join(zipPath, item.name)
+          
+          if (item.isDirectory()) {
+            // Skip node_modules, .git, and .next directories
+            if (item.name === 'node_modules' || item.name === '.git' || item.name === '.next') {
+              continue
+            }
+            // Recursively add subdirectories
+            await addFilesToZip(fullPath, relativePath)
+          } else {
+            // Add file to zip
+            try {
+              const fileContent = await fs.readFile(fullPath)
+              zip.file(relativePath, fileContent)
+            } catch (error) {
+              console.warn(`Could not add file ${fullPath}:`, error)
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(`Could not read directory ${dirPath}:`, error)
+      }
     }
+
+    // Add main configuration files
+    const configFiles = [
+      'package.json',
+      'package-lock.json',
+      'tailwind.config.ts',
+      'tsconfig.json',
+      'next.config.js',
+      'postcss.config.mjs',
+      'eslint.config.mjs',
+      'vercel.json',
+      'components.json',
+      'README.md',
+      'deploy.sh'
+    ]
     
-    const projectRoot = process.cwd();
-    let filePath: string;
-    let fileName: string;
-    let contentType: string;
-    
-    switch (file) {
-      case 'nextjs-backup':
-        filePath = join(projectRoot, 'moviflixpro-nextjs-backup.tar.gz');
-        fileName = 'moviflixpro-nextjs-backup.tar.gz';
-        contentType = 'application/gzip';
-        break;
-      case 'wordpress-theme':
-        filePath = join(projectRoot, 'moviflixpro-wordpress-theme.tar.gz');
-        fileName = 'moviflixpro-wordpress-theme.tar.gz';
-        contentType = 'application/gzip';
-        break;
-      case 'html-version':
-        filePath = join(projectRoot, 'moviflixpro-html-version.tar.gz');
-        fileName = 'moviflixpro-html-version.tar.gz';
-        contentType = 'application/gzip';
-        break;
-      default:
-        return NextResponse.json({ error: 'Invalid file parameter' }, { status: 400 });
+    for (const file of configFiles) {
+      try {
+        const filePath = path.join(projectRoot, file)
+        const fileContent = await fs.readFile(filePath)
+        zip.file(file, fileContent)
+      } catch (error) {
+        console.warn(`Could not add config file ${file}:`, error)
+      }
     }
-    
-    // Read the file
-    const fileBuffer = await readFile(filePath);
-    
-    // Return the file as a download
-    return new NextResponse(fileBuffer, {
-      status: 200,
+
+    // Add src directory
+    await addFilesToZip(path.join(projectRoot, 'src'), 'src')
+
+    // Add public directory
+    await addFilesToZip(path.join(projectRoot, 'public'), 'public')
+
+    // Add prisma directory
+    await addFilesToZip(path.join(projectRoot, 'prisma'), 'prisma')
+
+    // Add db directory
+    await addFilesToZip(path.join(projectRoot, 'db'), 'db')
+
+    // Add examples directory
+    await addFilesToZip(path.join(projectRoot, 'examples'), 'examples')
+
+    // Add server.ts
+    try {
+      const serverPath = path.join(projectRoot, 'server.ts')
+      const serverContent = await fs.readFile(serverPath)
+      zip.file('server.ts', serverContent)
+    } catch (error) {
+      console.warn('Could not add server.ts:', error)
+    }
+
+    // Generate the zip file
+    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' })
+
+    // Return the zip file
+    return new NextResponse(zipBuffer, {
       headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${fileName}"`,
-        'Content-Length': fileBuffer.length.toString(),
+        'Content-Type': 'application/zip',
+        'Content-Disposition': 'attachment; filename="movieflix-pro-website.zip"',
+        'Content-Length': zipBuffer.length.toString(),
       },
-    });
-    
+    })
+
   } catch (error) {
-    console.error('Download error:', error);
-    return NextResponse.json({ error: 'File not found or could not be read' }, { status: 404 });
+    console.error('Error creating zip file:', error)
+    return NextResponse.json(
+      { error: 'Failed to create zip file', details: error.message },
+      { status: 500 }
+    )
   }
 }

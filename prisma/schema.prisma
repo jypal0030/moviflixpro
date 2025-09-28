@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,28 +10,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Content {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  posterUrl   String?
+  year        Int?
+  duration    String?
+  rating      Float?
+  quality     Quality?
+  telegramUrl String?
+  contentType ContentType
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Category {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String?
+  contentType ContentType
+  contents    Content[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model AdminUser {
   id        String   @id @default(cuid())
+  username  String   @unique
   email     String   @unique
-  name      String?
+  password  String   // In production, this should be hashed
+  role      String   @default("admin")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// Content types for OTT platform
-enum ContentType {
-  MOVIE
-  WEB_SERIES
 }
 
 enum Quality {
@@ -44,45 +55,7 @@ enum Quality {
   EIGHT_K
 }
 
-model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique
-  description String?
-  contentType ContentType
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  contents Content[]
-}
-
-model Content {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  posterUrl   String?
-  year        Int?
-  duration    String?  // e.g., "2h 30m" for movies, "3 Seasons" for series
-  rating      Float?
-  quality     Quality?
-  telegramUrl String?
-  contentType ContentType
-  categoryId  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  category   Category?        @relation(fields: [categoryId], references: [id])
-  metadata   ContentMetadata[]
-}
-
-// For storing additional metadata if needed
-model ContentMetadata {
-  id        String   @id @default(cuid())
-  contentId String   @unique
-  key       String
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+enum ContentType {
+  MOVIE
+  WEB_SERIES
 }

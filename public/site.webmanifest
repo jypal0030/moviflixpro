@@ -1,0 +1,34 @@
+{
+  "name": "Movieflix Pro",
+  "short_name": "Movieflix",
+  "description": "Stream the latest movies and web series in HD quality. Movieflix Pro offers unlimited entertainment with a vast collection of premium content.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0072ff",
+  "theme_color": "#0072ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["entertainment", "movies", "streaming"],
+  "lang": "en"
+}
